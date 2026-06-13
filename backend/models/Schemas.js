@@ -62,6 +62,7 @@ const InterviewSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'ongoing', 'completed'], default: 'ongoing' },
   currentRound: { type: Number, default: 1 }, // 1: Resume, 2: DSA, 3: System Design, 4: Behavioral
   resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume' },
+  targetCompany: { type: String, default: 'Google' },
   
   // Section Scores (0-100)
   scores: {

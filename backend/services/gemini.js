@@ -87,7 +87,179 @@ export const parseResumeText = async (text, role, experienceYears) => {
 /**
  * Dynamically generates a question based on current round and session context
  */
-export const generateQuestion = async (round, resumeData, history = []) => {
+export const generateMockQuestion = (round, resumeData, history = [], targetCompany = 'Google') => {
+  const skills = resumeData?.skills || ["JavaScript", "Python"];
+  const projects = resumeData?.projects || [];
+  const experience = resumeData?.experience || [];
+  const achievements = resumeData?.achievements || [];
+  
+  // Return realistic, highly versatile mock questions based on the round and history
+  if (round === 'resume') {
+    const dynamicQuestions = [];
+    
+    // Build questions from experiences
+    if (experience && experience.length > 0) {
+      experience.forEach(exp => {
+        dynamicQuestions.push(`Regarding your role as ${exp.role} at ${exp.company}: you wrote that you "${exp.description}". Can you describe the most challenging technical hurdle you faced in this role?`);
+        dynamicQuestions.push(`At ${exp.company}, you worked as a ${exp.role} for ${exp.duration}. Can you detail the tech stack used and how cache invalidation or database schemas were structured?`);
+      });
+    }
+    
+    // Build questions from projects
+    if (projects && projects.length > 0) {
+      projects.forEach(proj => {
+        dynamicQuestions.push(`Let's discuss your project "${proj.name}". You described it as: "${proj.description}". What were the architectural design tradeoffs you made, and how did you choose ${proj.technologies ? proj.technologies.join(', ') : 'the technologies'}?`);
+      });
+    }
+
+    // Build questions from achievements
+    if (achievements && achievements.length > 0) {
+      achievements.forEach(ach => {
+        dynamicQuestions.push(`In your achievements, you mentioned: "${ach}". Can you share more context on this and explain your individual contribution to this milestone?`);
+      });
+    }
+
+    // Build questions from skills
+    if (skills && skills.length > 0) {
+      const randomSkill = skills[Math.floor(Math.random() * skills.length)];
+      dynamicQuestions.push(`You listed "${randomSkill}" as one of your core skills. Can you explain a complex project where you used "${randomSkill}" and how it helped solve the business problem?`);
+    }
+    
+    // Fallback default questions if arrays are empty
+    if (dynamicQuestions.length === 0) {
+      dynamicQuestions.push(`Could you walk me through your background, highlighting your most significant technical accomplishments?`);
+      dynamicQuestions.push(`Which of the projects on your resume are you most proud of, and what engineering tradeoffs did you make?`);
+      dynamicQuestions.push(`You listed core skills like ${skills.slice(0, 3).join(', ')}. How do you apply these in your day-to-day software development?`);
+    }
+    
+    // Select question based on history length, filtering out any questions that are already in history
+    let selectedQuestionText = dynamicQuestions[history.length % dynamicQuestions.length];
+    
+    // Avoid duplicates if possible
+    const askedQuestions = history.map(h => h.questionText);
+    const uniqueUnasked = dynamicQuestions.filter(q => !askedQuestions.includes(q));
+    if (uniqueUnasked.length > 0) {
+      selectedQuestionText = uniqueUnasked[0];
+    }
+    
+    return {
+      questionText: selectedQuestionText,
+      difficulty: 'medium',
+      topics: ['Resume', 'Technical']
+    };
+  } else if (round === 'dsa') {
+    const dsaQuestions = [
+      {
+        questionText: `[${targetCompany} Style Challenge] Given an array of integers 'nums' and an integer 'target', return indices of the two numbers such that they add up to 'target'. You may assume that each input would have exactly one solution, and you may not use the same element twice.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: nums = [2, 7, 11, 15], target = 9\nOutput: [0, 1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: nums = [3, 2, 4], target = 6\nOutput: [1, 2]\n\`\`\``,
+        codeTemplate: `function twoSum(nums, target) {\n    // Write your code here\n};`,
+        difficulty: 'easy',
+        topics: ['Arrays', 'Hash Map'],
+        id: 'two-sum',
+        functionName: 'twoSum',
+        testCases: [
+          { input: [[2, 7, 11, 15], 9], expected: [0, 1] },
+          { input: [[3, 2, 4], 6], expected: [1, 2] },
+          { input: [[3, 3], 6], expected: [0, 1] }
+        ]
+      },
+      {
+        questionText: `[${targetCompany} Style Challenge] Given a string 's', find the length of the longest substring without repeating characters.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: s = "abcabcbb"\nOutput: 3\nExplanation: The answer is "abc", with the length of 3.\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: s = "bbbbb"\nOutput: 1\nExplanation: The answer is "b", with the length of 1.\n\`\`\``,
+        codeTemplate: `function lengthOfLongestSubstring(s) {\n    // Write your code here\n};`,
+        difficulty: 'medium',
+        topics: ['String', 'Sliding Window'],
+        id: 'longest-substring',
+        functionName: 'lengthOfLongestSubstring',
+        testCases: [
+          { input: ["abcabcbb"], expected: 3 },
+          { input: ["bbbbb"], expected: 1 },
+          { input: ["pwwkew"], expected: 3 },
+          { input: [""], expected: 0 }
+        ]
+      },
+      {
+        questionText: `[${targetCompany} Style Challenge] Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: s = "()"\nOutput: true\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: s = "()[]{}"\nOutput: true\n\`\`\`\n\n**Example 3:**\n\`\`\`\nInput: s = "(]"\nOutput: false\n\`\`\``,
+        codeTemplate: `function isValid(s) {\n    // Write your code here\n};`,
+        difficulty: 'easy',
+        topics: ['Stack', 'String'],
+        id: 'valid-parentheses',
+        functionName: 'isValid',
+        testCases: [
+          { input: ["()"], expected: true },
+          { input: ["()[]{}"], expected: true },
+          { input: ["(]"], expected: false },
+          { input: ["([)]"], expected: false },
+          { input: ["{[]}"], expected: true }
+        ]
+      },
+      {
+        questionText: `[${targetCompany} Style Challenge] Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: intervals = [[1,3],[2,6],[8,10],[15,18]]\nOutput: [[1,6],[8,10],[15,18]]\nExplanation: Since intervals [1,3] and [2,6] overlap, merge them into [1,6].\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: intervals = [[1,4],[4,5]]\nOutput: [[1,5]]\nExplanation: Intervals [1,4] and [4,5] are considered overlapping.\n\`\`\``,
+        codeTemplate: `function merge(intervals) {\n    // Write your code here\n};`,
+        difficulty: 'medium',
+        topics: ['Array', 'Sorting'],
+        id: 'merge-intervals',
+        functionName: 'merge',
+        testCases: [
+          { input: [[[1, 3], [2, 6], [8, 10], [15, 18]]], expected: [[1, 6], [8, 10], [15, 18]] },
+          { input: [[[1, 4], [4, 5]]], expected: [[1, 5]] }
+        ]
+      },
+      {
+        questionText: `[${targetCompany} Style Challenge] Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: nums = [1,2,3,4]\nOutput: false\n\`\`\``,
+        codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
+        difficulty: 'easy',
+        topics: ['Array', 'Hash Table'],
+        id: 'contains-duplicate',
+        functionName: 'containsDuplicate',
+        testCases: [
+          { input: [[1, 2, 3, 1]], expected: true },
+          { input: [[1, 2, 3, 4]], expected: false },
+          { input: [[1, 1, 1, 3, 3, 4, 3, 2, 4, 2]], expected: true }
+        ]
+      }
+    ];
+    
+    const askedQuestions = history.map(h => h.questionText);
+    const uniqueUnasked = dsaQuestions.filter(q => !askedQuestions.some(asked => asked.includes(q.id) || q.questionText.includes(asked)));
+    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : dsaQuestions[Math.floor(Math.random() * dsaQuestions.length)];
+    return selected;
+  } else if (round === 'system_design') {
+    const designTopics = [
+      { questionText: `[${targetCompany} Style Challenge] Design a URL Shortener like TinyURL. Focus on database choices, API designs, and how to scale to 100M daily active requests.`, difficulty: 'medium', topics: ['System Design', 'Scaling'] },
+      { questionText: `[${targetCompany} Style Challenge] Design a Rate Limiter system that can be deployed at scale across a distributed API gateway setup.`, difficulty: 'medium', topics: ['System Design', 'API Gateway'] },
+      { questionText: `[${targetCompany} Style Challenge] Design WhatsApp. Detail the socket layer, database choice for messaging history, and how to scale notifications for offline users.`, difficulty: 'hard', topics: ['System Design', 'Sockets'] },
+      { questionText: `[${targetCompany} Style Challenge] Design a Distributed Cache system. Cover cache coherency, eviction strategies, and node registration.`, difficulty: 'hard', topics: ['System Design', 'Caching'] }
+    ];
+    
+    const askedQuestions = history.map(h => h.questionText);
+    const uniqueUnasked = designTopics.filter(q => !askedQuestions.includes(q.questionText));
+    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : designTopics[Math.floor(Math.random() * designTopics.length)];
+    return selected;
+  } else {
+    const behavioral = [
+      "Tell me about a time when you had a conflict with a peer or teammate. How did you approach resolving it and what was the outcome?",
+      "Describe a project or milestone that failed under your watch. What did you learn and how did it shape your future approach?",
+      "How do you prioritize features or handle shifting requirements from product management when under tight release deadlines?",
+      "Tell me about a time when you had to work with a very difficult stakeholder or customer. How did you manage that relationship?",
+      "Describe a situation where you had to make an important technical decision with limited information or data. What was your process?",
+      "Can you share an example of a time you went above and beyond your standard job duties to deliver a critical project?",
+      "Describe a time when you had to quickly learn a new technology or domain to complete a task. How did you ramp up?",
+      "Tell me about a time when you disagreed with your manager's direction. How did you voice your opinion and what was the resolution?",
+      "What is the most complex bug or technical issue you've resolved in production? Walk me through how you diagnosed and fixed it."
+    ];
+    
+    const askedQuestions = history.map(h => h.questionText);
+    const uniqueUnasked = behavioral.filter(q => !askedQuestions.includes(q));
+    let selectedQuestionText = uniqueUnasked.length > 0 ? uniqueUnasked[0] : behavioral[Math.floor(Math.random() * behavioral.length)];
+
+    return {
+      questionText: selectedQuestionText,
+      difficulty: 'medium',
+      topics: ['Behavioral', 'STAR Methodology']
+    };
+  }
+};
+
+export const generateQuestion = async (round, resumeData, history = [], targetCompany = 'Google') => {
   const role = resumeData?.role || "Software Engineer";
   const experienceYears = resumeData?.experienceYears || 2;
   const skills = resumeData?.skills || ["JavaScript", "Python"];
@@ -97,171 +269,12 @@ export const generateQuestion = async (round, resumeData, history = []) => {
   const technologies = resumeData?.technologies || [];
 
   if (!aiModel) {
-    // Return realistic, highly versatile mock questions based on the round and history
-    if (round === 'resume') {
-      const dynamicQuestions = [];
-      
-      // Build questions from experiences
-      if (experience && experience.length > 0) {
-        experience.forEach(exp => {
-          dynamicQuestions.push(`Regarding your role as ${exp.role} at ${exp.company}: you wrote that you "${exp.description}". Can you describe the most challenging technical hurdle you faced in this role?`);
-          dynamicQuestions.push(`At ${exp.company}, you worked as a ${exp.role} for ${exp.duration}. Can you detail the tech stack used and how cache invalidation or database schemas were structured?`);
-        });
-      }
-      
-      // Build questions from projects
-      if (projects && projects.length > 0) {
-        projects.forEach(proj => {
-          dynamicQuestions.push(`Let's discuss your project "${proj.name}". You described it as: "${proj.description}". What were the architectural design tradeoffs you made, and how did you choose ${proj.technologies ? proj.technologies.join(', ') : 'the technologies'}?`);
-        });
-      }
-
-      // Build questions from achievements
-      if (achievements && achievements.length > 0) {
-        achievements.forEach(ach => {
-          dynamicQuestions.push(`In your achievements, you mentioned: "${ach}". Can you share more context on this and explain your individual contribution to this milestone?`);
-        });
-      }
-
-      // Build questions from skills
-      if (skills && skills.length > 0) {
-        const randomSkill = skills[Math.floor(Math.random() * skills.length)];
-        dynamicQuestions.push(`You listed "${randomSkill}" as one of your core skills. Can you explain a complex project where you used "${randomSkill}" and how it helped solve the business problem?`);
-      }
-      
-      // Fallback default questions if arrays are empty
-      if (dynamicQuestions.length === 0) {
-        dynamicQuestions.push(`Could you walk me through your background, highlighting your most significant technical accomplishments?`);
-        dynamicQuestions.push(`Which of the projects on your resume are you most proud of, and what engineering tradeoffs did you make?`);
-        dynamicQuestions.push(`You listed core skills like ${skills.slice(0, 3).join(', ')}. How do you apply these in your day-to-day software development?`);
-      }
-      
-      // Select question based on history length, filtering out any questions that are already in history
-      let selectedQuestionText = dynamicQuestions[history.length % dynamicQuestions.length];
-      
-      // Avoid duplicates if possible
-      const askedQuestions = history.map(h => h.questionText);
-      const uniqueUnasked = dynamicQuestions.filter(q => !askedQuestions.includes(q));
-      if (uniqueUnasked.length > 0) {
-        selectedQuestionText = uniqueUnasked[0];
-      }
-      
-      return {
-        questionText: selectedQuestionText,
-        difficulty: 'medium',
-        topics: ['Resume', 'Technical']
-      };
-    } else if (round === 'dsa') {
-      const dsaQuestions = [
-        {
-          questionText: `Given an array of integers 'nums' and an integer 'target', return indices of the two numbers such that they add up to 'target'. You may assume that each input would have exactly one solution, and you may not use the same element twice.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: nums = [2, 7, 11, 15], target = 9\nOutput: [0, 1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: nums = [3, 2, 4], target = 6\nOutput: [1, 2]\n\`\`\``,
-          codeTemplate: `function twoSum(nums, target) {\n    // Write your code here\n};`,
-          difficulty: 'easy',
-          topics: ['Arrays', 'Hash Map'],
-          id: 'two-sum',
-          functionName: 'twoSum',
-          testCases: [
-            { input: [[2, 7, 11, 15], 9], expected: [0, 1] },
-            { input: [[3, 2, 4], 6], expected: [1, 2] },
-            { input: [[3, 3], 6], expected: [0, 1] }
-          ]
-        },
-        {
-          questionText: `Given a string 's', find the length of the longest substring without repeating characters.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: s = "abcabcbb"\nOutput: 3\nExplanation: The answer is "abc", with the length of 3.\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: s = "bbbbb"\nOutput: 1\nExplanation: The answer is "b", with the length of 1.\n\`\`\``,
-          codeTemplate: `function lengthOfLongestSubstring(s) {\n    // Write your code here\n};`,
-          difficulty: 'medium',
-          topics: ['String', 'Sliding Window'],
-          id: 'longest-substring',
-          functionName: 'lengthOfLongestSubstring',
-          testCases: [
-            { input: ["abcabcbb"], expected: 3 },
-            { input: ["bbbbb"], expected: 1 },
-            { input: ["pwwkew"], expected: 3 },
-            { input: [""], expected: 0 }
-          ]
-        },
-        {
-          questionText: `Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: s = "()"\nOutput: true\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: s = "()[]{}"\nOutput: true\n\`\`\`\n\n**Example 3:**\n\`\`\`\nInput: s = "(]"\nOutput: false\n\`\`\``,
-          codeTemplate: `function isValid(s) {\n    // Write your code here\n};`,
-          difficulty: 'easy',
-          topics: ['Stack', 'String'],
-          id: 'valid-parentheses',
-          functionName: 'isValid',
-          testCases: [
-            { input: ["()"], expected: true },
-            { input: ["()[]{}"], expected: true },
-            { input: ["(]"], expected: false },
-            { input: ["([)]"], expected: false },
-            { input: ["{[]}"], expected: true }
-          ]
-        },
-        {
-          questionText: `Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: intervals = [[1,3],[2,6],[8,10],[15,18]]\nOutput: [[1,6],[8,10],[15,18]]\nExplanation: Since intervals [1,3] and [2,6] overlap, merge them into [1,6].\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: intervals = [[1,4],[4,5]]\nOutput: [[1,5]]\nExplanation: Intervals [1,4] and [4,5] are considered overlapping.\n\`\`\``,
-          codeTemplate: `function merge(intervals) {\n    // Write your code here\n};`,
-          difficulty: 'medium',
-          topics: ['Array', 'Sorting'],
-          id: 'merge-intervals',
-          functionName: 'merge',
-          testCases: [
-            { input: [[[1, 3], [2, 6], [8, 10], [15, 18]]], expected: [[1, 6], [8, 10], [15, 18]] },
-            { input: [[[1, 4], [4, 5]]], expected: [[1, 5]] }
-          ]
-        },
-        {
-          questionText: `Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\`\n\n**Example 2:**\n\`\`\`\nInput: nums = [1,2,3,4]\nOutput: false\n\`\`\``,
-          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
-          difficulty: 'easy',
-          topics: ['Array', 'Hash Table'],
-          id: 'contains-duplicate',
-          functionName: 'containsDuplicate',
-          testCases: [
-            { input: [[1, 2, 3, 1]], expected: true },
-            { input: [[1, 2, 3, 4]], expected: false },
-            { input: [[1, 1, 1, 3, 3, 4, 3, 2, 4, 2]], expected: true }
-          ]
-        }
-      ];
-      
-      const askedQuestions = history.map(h => h.questionText);
-      const uniqueUnasked = dsaQuestions.filter(q => !askedQuestions.some(asked => asked.includes(q.id) || q.questionText.includes(asked)));
-      const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : dsaQuestions[Math.floor(Math.random() * dsaQuestions.length)];
-      return selected;
-    } else if (round === 'system_design') {
-      const designTopics = [
-        { questionText: "Design a URL Shortener like TinyURL. Focus on database choices, API designs, and how to scale to 100M daily active requests.", difficulty: 'medium', topics: ['System Design', 'Scaling'] },
-        { questionText: "Design a Rate Limiter system that can be deployed at scale across a distributed API gateway setup.", difficulty: 'medium', topics: ['System Design', 'API Gateway'] },
-        { questionText: "Design WhatsApp. Detail the socket layer, database choice for messaging history, and how to scale notifications for offline users.", difficulty: 'hard', topics: ['System Design', 'Sockets'] },
-        { questionText: "Design a Distributed Cache system. Cover cache coherency, eviction strategies, and node registration.", difficulty: 'hard', topics: ['System Design', 'Caching'] }
-      ];
-      
-      const askedQuestions = history.map(h => h.questionText);
-      const uniqueUnasked = designTopics.filter(q => !askedQuestions.includes(q.questionText));
-      const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : designTopics[Math.floor(Math.random() * designTopics.length)];
-      return selected;
-    } else {
-      const behavioral = [
-        "Tell me about a time when you had a conflict with a peer or teammate. How did you approach resolving it and what was the outcome?",
-        "Describe a project or milestone that failed under your watch. What did you learn and how did it shape your future approach?",
-        "How do you prioritize features or handle shifting requirements from product management when under tight release deadlines?",
-        "Tell me about a time when you had to work with a very difficult stakeholder or customer. How did you manage that relationship?",
-        "Describe a situation where you had to make an important technical decision with limited information or data. What was your process?",
-        "Can you share an example of a time you went above and beyond your standard job duties to deliver a critical project?",
-        "Describe a time when you had to quickly learn a new technology or domain to complete a task. How did you ramp up?",
-        "Tell me about a time when you disagreed with your manager's direction. How did you voice your opinion and what was the resolution?",
-        "What is the most complex bug or technical issue you've resolved in production? Walk me through how you diagnosed and fixed it."
-      ];
-      
-      const askedQuestions = history.map(h => h.questionText);
-      const uniqueUnasked = behavioral.filter(q => !askedQuestions.includes(q));
-      let selectedQuestionText = uniqueUnasked.length > 0 ? uniqueUnasked[0] : behavioral[Math.floor(Math.random() * behavioral.length)];
-
-      return {
-        questionText: selectedQuestionText,
-        difficulty: 'medium',
-        topics: ['Behavioral', 'STAR Methodology']
-      };
-    }
+    return generateMockQuestion(round, resumeData, history, targetCompany);
   }
+
+  // Select a random DSA topic to avoid repeating substring questions
+  const dsaTopics = ['Arrays', 'Strings', 'Stacks & Queues', 'Linked Lists', 'Trees & BST', 'Graphs', 'Dynamic Programming', 'Matrix / 2D Grid', 'Hash Tables', 'Recursion & Backtracking', 'Sorting & Binary Search'];
+  const randomDsaTopic = dsaTopics[Math.floor(Math.random() * dsaTopics.length)];
 
   // Real LLM Generation with rich context and settings
   const prompt = `
@@ -274,13 +287,14 @@ export const generateQuestion = async (round, resumeData, history = []) => {
     Work History/Experiences: ${JSON.stringify(experience)}
     Projects: ${JSON.stringify(projects)}
     
+    Target Company Style: ${targetCompany}
     Current Round: ${round}
     Previous Interview Questions History: ${JSON.stringify(history.map(h => h.questionText))}
     
     Instructions:
     - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
     - If round is "resume", generate a deep-dive question targeting one of their listed projects, work experience achievements, or technologies. Refer directly to the name of the company or project. Make it specific and avoid generic questions.
-    - If round is "dsa", generate a LeetCode style coding question from a randomly selected topic (e.g. Arrays, Strings, Stacks, Queues, Matrix, Trees, Graphs, Sorting, Hash Tables).
+    - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!).
       Provide a clean function boilerplate for JavaScript in "codeTemplate".
       Provide a unique slug/name (e.g. "reverse-string") in "id".
       Provide the main function name to evaluate in "functionName".
@@ -293,8 +307,8 @@ export const generateQuestion = async (round, resumeData, history = []) => {
         "input": [arg1, arg2, ...] (the parameters passed to the function, represented as an array of arguments. E.g. for twoSum(nums, target) it is [[2,7,11,15], 9] which is an array with two elements: a sub-array and a number)
         "expected": expected_output_value (the expected output value returned by the function)
       Ensure the test cases are realistic, match the signature of the function, and can be evaluated using standard JSON comparisons.
-    - If round is "system_design", ask for architectural designs suitable for YOE of ${experienceYears}. E.g. URL Shortener, Rate Limiter, WhatsApp, or Distributed Cache.
-    - If round is "behavioral", ask STAR-format questions challenging their leadership, conflicts, failures, or task management.
+    - If round is "system_design", ask for architectural designs suitable for YOE of ${experienceYears} tailored to the typical systems scale of ${targetCompany}. E.g. URL Shortener, Rate Limiter, WhatsApp, or Distributed Cache.
+    - If round is "behavioral", ask STAR-format questions challenging their leadership, conflicts, failures, or task management, aligning with ${targetCompany}'s core values.
     
     CRITICAL: Do NOT generate any question that is identical or highly similar to any question listed in the "Previous Interview Questions History". Ensure high versatility and variety.
     
@@ -321,8 +335,8 @@ export const generateQuestion = async (round, resumeData, history = []) => {
     const cleanText = response.text().replace(/```json|```/gi, '').trim();
     return JSON.parse(cleanText);
   } catch (err) {
-    console.error("Error generating question from Gemini:", err);
-    return generateQuestion(round, resumeData, history);
+    console.error("Error generating question from Gemini, using fallback mock generation:", err);
+    return generateMockQuestion(round, resumeData, history, targetCompany);
   }
 };
 

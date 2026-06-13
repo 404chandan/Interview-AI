@@ -70,18 +70,16 @@ export default function LeetCodeGenerator() {
           <h2 className="text-lg font-bold text-gray-200">Configure Practice Workspace</h2>
           
           <div className="space-y-4 text-left">
-            {/* Topic Select */}
+            {/* Topic Input */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Select Topic / Mixed Category</label>
-              <select
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Topic / Mixed Category</label>
+              <input
+                type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
-              >
-                {topics.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
+                placeholder="e.g. Arrays, Graphs, Dynamic Programming, Heap, or enter custom"
+                className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm placeholder-gray-600"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -102,15 +100,13 @@ export default function LeetCodeGenerator() {
               {/* Company */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Company Style</label>
-                <select
+                <input
+                  type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
-                >
-                  {companies.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  placeholder="e.g. Google, Amazon, Uber, or enter custom"
+                  className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm placeholder-gray-600"
+                />
               </div>
             </div>
           </div>

@@ -95,6 +95,7 @@ export default function ResumeSetup({ onStartInterview }) {
           experienceYears: experience,
           resumeId,
           interviewer: selectedInterviewer,
+          targetCompany, // Pass targetCompany
         }),
       });
 
@@ -238,15 +239,13 @@ export default function ResumeSetup({ onStartInterview }) {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Target Company</label>
-              <select
+              <input
+                type="text"
                 value={targetCompany}
                 onChange={(e) => setTargetCompany(e.target.value)}
-                className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
-              >
-                {companies.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                placeholder="e.g. Google, Microsoft, Stripe, or enter custom"
+                className="w-full px-4 py-2.5 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm placeholder-gray-600"
+              />
             </div>
           </div>
 

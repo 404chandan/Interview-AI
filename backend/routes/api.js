@@ -250,7 +250,7 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
  */
 router.post('/interview/start', async (req, res) => {
   try {
-    const { role, experienceYears, resumeId } = req.body;
+    const { role, experienceYears, resumeId, targetCompany } = req.body;
     const userId = await getUserId(req);
 
     let interview;
@@ -261,7 +261,8 @@ router.post('/interview/start', async (req, res) => {
         experienceYears: Number(experienceYears),
         resumeId: mongoose.Types.ObjectId.isValid(resumeId) ? resumeId : null,
         status: 'ongoing',
-        currentRound: 1
+        currentRound: 1,
+        targetCompany: targetCompany || 'Google'
       });
     } else {
       interview = {
@@ -272,6 +273,7 @@ router.post('/interview/start', async (req, res) => {
         resumeId,
         status: 'ongoing',
         currentRound: 1,
+        targetCompany: targetCompany || 'Google',
         scores: { resume: 0, projects: 0, technical: 0, dsa: 0, systemDesign: 0, behavioral: 0 },
         finalScore: 0,
         hiringDecision: 'Pending',
@@ -336,6 +338,15 @@ router.post('/interview/:id/question', async (req, res) => {
       resumeData = inMemoryDb.resumes.find(r => r._id === resumeId);
     }
 
+    // Fetch interview to get targetCompany
+    let interviewObj = null;
+    if (mongoose.connection.readyState === 1) {
+      interviewObj = await Interview.findById(interviewId);
+    } else {
+      interviewObj = inMemoryDb.interviews.find(i => i._id === interviewId);
+    }
+    const targetCompany = interviewObj?.targetCompany || 'Google';
+
     // Fetch question history for this interview
     let history = [];
     if (mongoose.connection.readyState === 1) {
@@ -344,7 +355,7 @@ router.post('/interview/:id/question', async (req, res) => {
       history = inMemoryDb.questions.filter(q => q.interviewId === interviewId);
     }
 
-    const questionObj = await generateQuestion(round, resumeData, history);
+    const questionObj = await generateQuestion(round, resumeData, history, targetCompany);
     
     let savedQuestion;
     if (mongoose.connection.readyState === 1) {
@@ -767,37 +778,65 @@ router.post('/leetcode/generate', async (req, res) => {
     
     // Construct dynamic prompt or return mock
     if (!aiModel) {
-      // Mock questions based on topic
-      const mocks = {
-        "Arrays": {
-          questionText: `Given an array of integers, find if the array contains any duplicates. Your function should return true if any value appears at least twice in the array, and it should return false if every element is distinct.`,
-          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
-          difficulty: difficulty || 'easy',
-          topics: ['Arrays', 'Hash Set'],
-          id: 'contains-duplicate',
-          functionName: 'containsDuplicate'
-        },
-        "Trees": {
-          questionText: `Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.`,
+      const cleanTopic = topic || 'Arrays';
+      const cleanCompany = company || 'General';
+      const lowercaseTopic = cleanTopic.toLowerCase();
+      
+      let mockQ;
+      if (lowercaseTopic.includes('tree') || lowercaseTopic.includes('bst')) {
+        mockQ = {
+          questionText: `[${cleanCompany} Style Challenge] Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: root = [3,9,20,null,null,15,7]\nOutput: 3\n\`\`\`\n\nConstraints:\n- The number of nodes in the tree is in the range [0, 10^4].`,
           codeTemplate: `function maxDepth(root) {\n    // Write your code here\n};`,
           difficulty: difficulty || 'medium',
-          topics: ['Binary Tree', 'DFS'],
-          id: 'max-depth',
-          functionName: 'maxDepth'
-        },
-        "Graphs": {
-          questionText: `There are an total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai. Return true if you can finish all courses. Otherwise, return false.`,
+          topics: [cleanTopic, 'DFS'],
+          id: 'max-depth-' + Date.now(),
+          functionName: 'maxDepth',
+          testCases: [
+            { input: [[3,9,20,null,null,15,7]], expected: 3 },
+            { input: [[1,null,2]], expected: 2 }
+          ]
+        };
+      } else if (lowercaseTopic.includes('graph') || lowercaseTopic.includes('bfs') || lowercaseTopic.includes('dfs')) {
+        mockQ = {
+          questionText: `[${cleanCompany} Style Challenge] There are an total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai. Return true if you can finish all courses.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: numCourses = 2, prerequisites = [[1,0]]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= numCourses <= 2000`,
           codeTemplate: `function canFinish(numCourses, prerequisites) {\n    // Write your code here\n};`,
           difficulty: difficulty || 'medium',
-          topics: ['Graph', 'BFS', 'Topological Sort'],
-          id: 'course-schedule',
-          functionName: 'canFinish'
-        }
-      };
-
-      const q = mocks[topic] || mocks["Arrays"];
-      q.difficulty = difficulty || 'medium';
-      return res.json(q);
+          topics: [cleanTopic, 'BFS', 'Topological Sort'],
+          id: 'course-schedule-' + Date.now(),
+          functionName: 'canFinish',
+          testCases: [
+            { input: [2, [[1,0]]], expected: true },
+            { input: [2, [[1,0],[0,1]]], expected: false }
+          ]
+        };
+      } else if (lowercaseTopic.includes('matrix') || lowercaseTopic.includes('grid')) {
+        mockQ = {
+          questionText: `[${cleanCompany} Style Challenge] Given an m x n 2D binary grid grid which represents a map of '1's (land) and '0's (water), return the number of islands.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]\nOutput: 1\n\`\`\`\n\nConstraints:\n- m == grid.length\n- n == grid[i].length`,
+          codeTemplate: `function numIslands(grid) {\n    // Write your code here\n};`,
+          difficulty: difficulty || 'hard',
+          topics: [cleanTopic, 'DFS', 'Matrix'],
+          id: 'num-islands-' + Date.now(),
+          functionName: 'numIslands',
+          testCases: [
+            { input: [[["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]], expected: 1 }
+          ]
+        };
+      } else {
+        // Default Array/String fallback
+        mockQ = {
+          questionText: `[${cleanCompany} Style Challenge] Given an array of integers nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= nums.length <= 10^5`,
+          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
+          difficulty: difficulty || 'easy',
+          topics: [cleanTopic, 'Hash Set'],
+          id: 'contains-duplicate-' + Date.now(),
+          functionName: 'containsDuplicate',
+          testCases: [
+            { input: [[1, 2, 3, 1]], expected: true },
+            { input: [[1, 2, 3, 4]], expected: false }
+          ]
+        };
+      }
+      return res.json(mockQ);
     }
 
     const prompt = `
