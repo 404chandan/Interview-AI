@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,7 +8,7 @@ let aiModel = null;
 
 if (apiKey) {
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenerativeAI(apiKey);
     aiModel = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
     console.log('✨ Gemini Generative AI Service initialized successfully.');
   } catch (err) {
