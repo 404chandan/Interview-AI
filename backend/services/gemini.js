@@ -278,6 +278,7 @@ export const generateQuestion = async (round, resumeData, history = []) => {
     Previous Interview Questions History: ${JSON.stringify(history.map(h => h.questionText))}
     
     Instructions:
+    - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
     - If round is "resume", generate a deep-dive question targeting one of their listed projects, work experience achievements, or technologies. Refer directly to the name of the company or project. Make it specific and avoid generic questions.
     - If round is "dsa", generate a LeetCode style coding question from a randomly selected topic (e.g. Arrays, Strings, Stacks, Queues, Matrix, Trees, Graphs, Sorting, Hash Tables).
       Provide a clean function boilerplate for JavaScript in "codeTemplate".
@@ -375,6 +376,8 @@ export const evaluateAnswer = async (questionText, answerText, round, history = 
     Evaluate the response. Grade it on a scale of 0 to 10.
     Generate constructive feedback.
     Also generate a natural, conversational follow-up question extending their answer or addressing a missed edge case.
+    
+    CRITICAL: The follow-up question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or numbered lists. Seek exactly ONE specific explanation or detail, keeping it like a real-time conversation.
     
     CRITICAL: The follow-up question must be unique and must NOT duplicate or overlap with any questions or concepts from the "Previous Interview History".
     

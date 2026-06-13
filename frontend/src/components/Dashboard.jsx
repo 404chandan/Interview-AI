@@ -87,6 +87,8 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
     fetchData();
   }, []);
 
+  const isNewUser = !loading && history.length === 0;
+
   // Format Recharts trend data
   const chartData = analytics.dsaTrend.map((_, i) => ({
     session: `Session #${i + 1}`,
@@ -144,47 +146,60 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
             <h2 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-brandBlue" /> Performance Metrics Timeline
             </h2>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorDsa" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorSys" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorComm" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="session" stroke="#4b5563" fontSize={10} tickLine={false} />
-                  <YAxis stroke="#4b5563" fontSize={10} tickLine={false} domain={[0, 100]} />
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#121826', borderColor: '#1f293d', borderRadius: '8px' }}
-                    labelStyle={{ color: '#9ca3af', fontWeight: 'bold' }}
-                  />
-                  <Area type="monotone" dataKey="DSA" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorDsa)" name="DSA / Coding" />
-                  <Area type="monotone" dataKey="SystemDesign" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorSys)" name="System Design" />
-                  <Area type="monotone" dataKey="Communication" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorComm)" name="Communication" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex gap-6 mt-4 justify-center text-xs">
-              <span className="flex items-center gap-1.5 text-gray-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-brandBlue" /> DSA / Coding
-              </span>
-              <span className="flex items-center gap-1.5 text-gray-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-brandPurple" /> System Design
-              </span>
-              <span className="flex items-center gap-1.5 text-gray-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-brandAccent" /> Communication
-              </span>
-            </div>
+            
+            {isNewUser ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center p-6 bg-darkBg/10 border border-dashed border-darkBorder rounded-lg">
+                <Award className="w-10 h-10 text-gray-600 mb-3" />
+                <p className="text-sm font-semibold text-gray-300">Performance Timeline Pending</p>
+                <p className="text-xs text-gray-500 max-w-sm mt-1">
+                  Complete your first mock interview. We will track your DSA, System Design, and Communication skills over time.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorDsa" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorSys" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorComm" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="session" stroke="#4b5563" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#4b5563" fontSize={10} tickLine={false} domain={[0, 100]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#121826', borderColor: '#1f293d', borderRadius: '8px' }}
+                        labelStyle={{ color: '#9ca3af', fontWeight: 'bold' }}
+                      />
+                      <Area type="monotone" dataKey="DSA" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorDsa)" name="DSA / Coding" />
+                      <Area type="monotone" dataKey="SystemDesign" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorSys)" name="System Design" />
+                      <Area type="monotone" dataKey="Communication" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorComm)" name="Communication" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex gap-6 mt-4 justify-center text-xs">
+                  <span className="flex items-center gap-1.5 text-gray-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brandBlue" /> DSA / Coding
+                  </span>
+                  <span className="flex items-center gap-1.5 text-gray-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brandPurple" /> System Design
+                  </span>
+                  <span className="flex items-center gap-1.5 text-gray-400">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brandAccent" /> Communication
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Past History */}
@@ -263,55 +278,79 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
             </p>
 
             {/* Target readiness meters */}
-            <div className="space-y-4 mb-6">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Target Company Readiness</span>
-              {companies.map((company) => (
-                <div key={company.name} className="space-y-1">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-gray-200">{company.name} <span className="text-[10px] text-gray-500">({company.level})</span></span>
-                    <span style={{ color: company.color }}>{company.rating}%</span>
+            {/* Target readiness meters */}
+            {isNewUser ? (
+              <div className="flex flex-col items-center justify-center py-6 px-4 text-center bg-darkBg/10 border border-dashed border-darkBorder rounded-lg my-4">
+                <Zap className="w-8 h-8 text-gray-600 mb-2" />
+                <p className="text-xs font-semibold text-gray-300">Readiness Analysis Pending</p>
+                <p className="text-[10px] text-gray-500 max-w-[200px] mt-1">
+                  We will compile your readiness scores for Google, Amazon, Meta, and Microsoft after your first assessment.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4 mb-6">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Target Company Readiness</span>
+                {companies.map((company) => (
+                  <div key={company.name} className="space-y-1">
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-gray-200">{company.name} <span className="text-[10px] text-gray-500">({company.level})</span></span>
+                      <span style={{ color: company.color }}>{company.rating}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000"
+                        style={{ 
+                          width: `${company.rating}%`,
+                          backgroundColor: company.color
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-1000"
-                      style={{ 
-                        width: `${company.rating}%`,
-                        backgroundColor: company.color
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Feedback items */}
-            <div className="space-y-3 pt-4 border-t border-darkBorder">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" /> Focus Weak Spots
-              </span>
-              <div className="space-y-2">
-                {personalData.weakSpots.map((item, index) => (
-                  <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
-                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
-                    <span><strong>{item.topic}:</strong> {item.detail}</span>
-                  </div>
-                ))}
+            {isNewUser ? (
+              <div className="pt-4 border-t border-darkBorder text-center">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center justify-center gap-1 mb-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" /> Skill Profile Pending
+                </span>
+                <p className="text-[10px] text-gray-500 max-w-[220px] mx-auto mt-1">
+                  Your core strengths and weak spots will be mapped as you complete interviews.
+                </p>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-3 pt-4 border-t border-darkBorder">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" /> Focus Weak Spots
+                  </span>
+                  <div className="space-y-2">
+                    {personalData.weakSpots.map((item, index) => (
+                      <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
+                        <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
+                        <span><strong>{item.topic}:</strong> {item.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            <div className="space-y-3 pt-4 mt-4 border-t border-darkBorder">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5 text-brandAccent" /> Top Strengths
-              </span>
-              <div className="space-y-2">
-                {personalData.strengths.map((item, index) => (
-                  <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
-                    <span className="w-1.5 h-1.5 bg-brandAccent rounded-full mt-1.5 flex-shrink-0" />
-                    <span><strong>{item.topic}:</strong> {item.detail}</span>
+                <div className="space-y-3 pt-4 mt-4 border-t border-darkBorder">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 text-brandAccent" /> Top Strengths
+                  </span>
+                  <div className="space-y-2">
+                    {personalData.strengths.map((item, index) => (
+                      <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
+                        <span className="w-1.5 h-1.5 bg-brandAccent rounded-full mt-1.5 flex-shrink-0" />
+                        <span><strong>{item.topic}:</strong> {item.detail}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Quick study links */}

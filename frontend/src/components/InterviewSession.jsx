@@ -103,8 +103,8 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     
     // Quick conversational reveal speed: 12ms per character
     const interval = setInterval(() => {
-      setDisplayedQuestion((prev) => prev + questionText.charAt(index));
       index++;
+      setDisplayedQuestion(questionText.slice(0, index));
       if (index >= questionText.length) {
         clearInterval(interval);
       }
