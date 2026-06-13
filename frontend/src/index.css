@@ -104,3 +104,31 @@
   font-size: 11px;
   font-weight: 500;
 }
+
+/* Voice wave animations */
+@keyframes wave-tall {
+  0%, 100% { height: 8px; }
+  50% { height: 24px; }
+}
+
+@keyframes wave-medium {
+  0%, 100% { height: 6px; }
+  50% { height: 18px; }
+}
+
+@keyframes wave-short {
+  0%, 100% { height: 4px; }
+  50% { height: 12px; }
+}
+
+.animate-wave-tall {
+  animation: wave-tall 1.2s ease-in-out infinite;
+}
+
+.animate-wave-medium {
+  animation: wave-medium 0.9s ease-in-out infinite;
+}
+
+.animate-wave-short {
+  animation: wave-short 0.7s ease-in-out infinite;
+}

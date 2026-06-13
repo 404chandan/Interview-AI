@@ -33,6 +33,12 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [roundStep, setRoundStep] = useState(0); // tracks steps inside each round
   const [finished, setFinished] = useState(false);
+  const [inputMode, setInputMode] = useState('voice'); // 'voice' or 'typing'
+
+  const micOnRef = useRef(micOn);
+  useEffect(() => {
+    micOnRef.current = micOn;
+  }, [micOn]);
 
   const videoRef = useRef(null);
   const socketRef = useRef(null);
@@ -116,6 +122,17 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         }
       };
 
+      rec.onend = () => {
+        // Automatically restart speech recognition if it timeouts but mic state is still on
+        if (micOnRef.current && recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            // Already started
+          }
+        }
+      };
+
       rec.onerror = (e) => console.error("Speech Recognition Error: ", e);
       recognitionRef.current = rec;
     }
@@ -171,6 +188,16 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       setCurrentQuestion(data.question);
       setQuestionText(data.question.questionText);
       speakText(data.question.questionText);
+
+      // Automatically reactivate microphone for verbal rounds if in Voice Mode
+      if ((round === 1 || round === 4) && inputMode === 'voice' && !micOn && recognitionRef.current) {
+        setTimeout(() => {
+          try {
+            recognitionRef.current.start();
+            setMicOn(true);
+          } catch (e) {}
+        }, 1500);
+      }
     } catch (err) {
       console.warn("Offline fallback for question retrieval.");
       
@@ -221,19 +248,25 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     setTimeout(() => {
       speakText("Hello! Let's begin by reviewing your resume. I analyzed your profile at Siemens.");
       getQuestion(1);
+      
+      // Auto start mic for first question
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setMicOn(true);
+        } catch (e) {}
+      }
     }, 1000);
   }, []);
 
   // 7. Submit Verbal Answer (Round 1 & Round 4)
   const handleSubmitAnswer = async () => {
-    if (!transcript.trim()) return;
+    const textToSubmit = transcript.trim();
+    if (!textToSubmit) return;
     setSubmittingAnswer(true);
+    setTranscript(''); // Clear immediately so it is ready for continuous dictation
 
-    // Stop mic
-    if (micOn && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setMicOn(false);
-    }
+    // Do NOT stop the mic here! Keep it active (latent mic)
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/interview/${interviewId}/answer`, {
@@ -241,7 +274,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           questionId: currentQuestion?._id || 'mock-id',
-          answerText: transcript,
+          answerText: textToSubmit,
           round: currentRound === 1 ? 'resume' : 'behavioral'
         })
       });
@@ -297,6 +330,16 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     setTranscript('');
     setRoundStep(0);
     const nextRound = currentRound + 1;
+    
+    // If next round is not verbal, stop mic
+    if (nextRound === 2 || nextRound === 3) {
+      if (micOn && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+        setMicOn(false);
+      }
+    }
     
     if (nextRound > 4) {
       handleFinishInterview();
@@ -403,7 +446,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
           
           {/* AI Avatar Display */}
           <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center min-h-[260px] relative">
-            <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} />
+            <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
           </div>
 
           {/* Candidate Camera Stream */}
@@ -467,19 +510,85 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                 </div>
               </div>
 
-              {/* User transcript console */}
-              <div className="space-y-4 pt-6 border-t border-darkBorder/40">
-                <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-wide">
-                  <span>Candidate Response (Speak or Type)</span>
-                  {micOn && <span className="text-brandAccent animate-pulse flex items-center gap-1">🎤 Capturing mic...</span>}
-                </div>
+               {/* User transcript console */}
+               <div className="space-y-4 pt-6 border-t border-darkBorder/40">
+                 <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+                   <div className="flex items-center gap-2">
+                     <span className="text-gray-300 font-semibold">Input Mode:</span>
+                     <button
+                       onClick={() => {
+                         setInputMode('voice');
+                         if (!micOn && recognitionRef.current) {
+                           setTranscript('');
+                           recognitionRef.current.start();
+                           setMicOn(true);
+                         }
+                       }}
+                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
+                         inputMode === 'voice' 
+                           ? 'border-brandBlue bg-brandBlue/10 text-brandBlue' 
+                           : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'
+                       }`}
+                     >
+                       Oral / Voice
+                     </button>
+                     <button
+                       onClick={() => {
+                         setInputMode('typing');
+                       }}
+                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
+                         inputMode === 'typing' 
+                           ? 'border-brandPurple bg-brandPurple/10 text-brandPurple' 
+                           : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'
+                       }`}
+                     >
+                       Keyboard / Typing
+                     </button>
+                   </div>
+                   {micOn && <span className="text-brandAccent animate-pulse flex items-center gap-1">🎤 Capturing mic...</span>}
+                 </div>
 
-                <textarea
-                  value={transcript}
-                  onChange={(e) => setTranscript(e.target.value)}
-                  placeholder="Click the microphone in the status ribbon above to begin dictation or type your explanation here..."
-                  className="w-full h-32 p-4 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-sm text-gray-200 placeholder-gray-600 resize-none leading-relaxed"
-                />
+                 {inputMode === 'voice' ? (
+                   // Voice Mode Visualizer
+                   <div className="w-full h-32 p-4 bg-darkBg/50 border border-darkBorder rounded-lg flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                     <div className={`absolute w-36 h-36 bg-brandAccent/5 rounded-full blur-xl transition-all duration-1000 ${micOn ? 'scale-150 opacity-100' : 'scale-50 opacity-0'}`} />
+                     
+                     <div className="relative z-10 flex flex-col items-center gap-3">
+                       {micOn ? (
+                         <>
+                           <div className="flex items-center gap-1.5 h-6">
+                             <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.1s' }} />
+                             <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.2s' }} />
+                             <div className="w-1.5 bg-brandAccent rounded-full animate-wave-short" style={{ animationDelay: '0.3s' }} />
+                             <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.4s' }} />
+                             <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.5s' }} />
+                           </div>
+                           <p className="text-xs text-gray-300 font-bold max-w-md line-clamp-2 italic px-4">
+                             "{transcript.trim() || 'Listening to your voice... Speak now!'}"
+                           </p>
+                         </>
+                       ) : (
+                         <>
+                           <button
+                             type="button"
+                             onClick={handleMicToggle}
+                             className="w-10 h-10 rounded-full bg-brandAccent/10 border border-brandAccent/30 hover:bg-brandAccent/20 flex items-center justify-center text-brandAccent transition-all shadow-lg shadow-brandAccent/10"
+                           >
+                             <Mic className="w-5 h-5" />
+                           </button>
+                           <p className="text-xs text-gray-400 font-semibold">Microphone is off. Click to start speaking.</p>
+                         </>
+                       )}
+                     </div>
+                   </div>
+                 ) : (
+                   <textarea
+                     value={transcript}
+                     onChange={(e) => setTranscript(e.target.value)}
+                     placeholder="Type your explanation or answer here..."
+                     className="w-full h-32 p-4 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-sm text-gray-200 placeholder-gray-600 resize-none leading-relaxed"
+                   />
+                 )}
 
                 <div className="flex justify-end">
                   <button
