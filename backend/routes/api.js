@@ -219,6 +219,7 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
         skills: parsedData.skills,
         projects: parsedData.projects,
         experience: parsedData.experience,
+        achievements: parsedData.achievements || [],
         technologies: parsedData.technologies
       });
     } else {
@@ -228,7 +229,11 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
         filename: req.file ? req.file.originalname : 'provided_resume.pdf',
         role,
         experienceYears: Number(experienceYears),
-        ...parsedData
+        skills: parsedData.skills,
+        projects: parsedData.projects,
+        experience: parsedData.experience,
+        achievements: parsedData.achievements || [],
+        technologies: parsedData.technologies
       };
       inMemoryDb.resumes.push(savedResume);
     }
@@ -297,6 +302,29 @@ router.post('/interview/:id/question', async (req, res) => {
   try {
     const interviewId = req.params.id;
     const { round, resumeId } = req.body;
+
+    // Clean up unanswered questions for this interview and round to avoid clutter
+    if (mongoose.connection.readyState === 1) {
+      await Question.deleteMany({
+        interviewId,
+        round,
+        $and: [
+          { $or: [{ userAnswerText: { $exists: false } }, { userAnswerText: "" }] },
+          { $or: [{ userAnswerCode: { $exists: false } }, { userAnswerCode: "" }] },
+          { $or: [{ userAnswerWhiteboard: { $exists: false } }, { userAnswerWhiteboard: "" }] }
+        ]
+      });
+    } else {
+      inMemoryDb.questions = inMemoryDb.questions.filter(q => {
+        if (q.interviewId === interviewId && q.round === round) {
+          const hasAnswer = (q.userAnswerText && q.userAnswerText.trim() !== "") || 
+                            (q.userAnswerCode && q.userAnswerCode.trim() !== "") || 
+                            (q.userAnswerWhiteboard && q.userAnswerWhiteboard.trim() !== "");
+          return hasAnswer;
+        }
+        return true;
+      });
+    }
     
     // Fetch resume details
     let resumeData = null;
@@ -325,6 +353,8 @@ router.post('/interview/:id/question', async (req, res) => {
         round,
         questionText: questionObj.questionText,
         codeTemplate: questionObj.codeTemplate || null,
+        dsaSlug: questionObj.id || questionObj.dsaSlug || null,
+        functionName: questionObj.functionName || null,
         difficulty: questionObj.difficulty || 'medium',
         topics: questionObj.topics || [],
         expectedAnswer: questionObj.expectedAnswer || '',
@@ -338,13 +368,13 @@ router.post('/interview/:id/question', async (req, res) => {
         round,
         questionText: questionObj.questionText,
         codeTemplate: questionObj.codeTemplate || null,
+        dsaSlug: questionObj.id || questionObj.dsaSlug || null,
+        functionName: questionObj.functionName || null,
         difficulty: questionObj.difficulty || 'medium',
         topics: questionObj.topics || [],
         expectedAnswer: questionObj.expectedAnswer || '',
         score: 0,
-        feedback: '',
-        id: questionObj.id || null,
-        functionName: questionObj.functionName || null
+        feedback: ''
       };
       inMemoryDb.questions.push(savedQuestion);
     }
@@ -376,7 +406,15 @@ router.post('/interview/:id/answer', async (req, res) => {
       if (activeQuestion) questionText = activeQuestion.questionText;
     }
 
-    const evaluation = await evaluateAnswer(questionText, answerText, round);
+    // Fetch question history for this interview to pass to evaluator
+    let history = [];
+    if (mongoose.connection.readyState === 1) {
+      history = await Question.find({ interviewId });
+    } else {
+      history = inMemoryDb.questions.filter(q => q.interviewId === interviewId);
+    }
+
+    const evaluation = await evaluateAnswer(questionText, answerText, round, history);
 
     // Save answer evaluation
     if (activeQuestion) {
@@ -408,9 +446,23 @@ router.post('/interview/:id/code', async (req, res) => {
     const { questionId, code, language, questionText, functionName } = req.body;
     const userId = await getUserId(req);
 
+    // Resolve questionId to dsaSlug if it's a mongo ID
+    let dsaSlug = questionId;
+    let activeQuestion;
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(questionId)) {
+      activeQuestion = await Question.findById(questionId);
+      if (activeQuestion && activeQuestion.dsaSlug) {
+        dsaSlug = activeQuestion.dsaSlug;
+      }
+    } else {
+      activeQuestion = inMemoryDb.questions.find(q => q._id === questionId);
+      if (activeQuestion && activeQuestion.dsaSlug) {
+        dsaSlug = activeQuestion.dsaSlug;
+      }
+    }
+
     // 1. Run local sandboxed tests
-    // If the DSA question matches a slug, it runs actual tests, else runs structure validation
-    const executionResults = await executeCode(code, language, questionId, functionName);
+    const executionResults = await executeCode(code, language, dsaSlug, functionName || (activeQuestion && activeQuestion.functionName) || 'solution');
 
     // 2. Perform AI review of code
     const aiReview = await reviewDSASelection(questionText, code, language);
@@ -437,7 +489,6 @@ router.post('/interview/:id/code', async (req, res) => {
       });
 
       // Update question text and record DSA results
-      const activeQuestion = await Question.findById(questionId);
       if (activeQuestion) {
         activeQuestion.userAnswerCode = code;
         activeQuestion.score = Math.round(correctnessScore / 10);
@@ -464,7 +515,6 @@ router.post('/interview/:id/code', async (req, res) => {
       };
       inMemoryDb.submissions.push(submission);
 
-      const activeQuestion = inMemoryDb.questions.find(q => q._id === questionId);
       if (activeQuestion) {
         activeQuestion.userAnswerCode = code;
         activeQuestion.score = Math.round(correctnessScore / 10);

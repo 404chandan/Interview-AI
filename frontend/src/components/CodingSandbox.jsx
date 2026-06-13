@@ -122,7 +122,7 @@ export default function CodingSandbox({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px] select-none text-left">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full select-none text-left">
       {/* Left panel: Description & Review Tabs */}
       <div className="flex flex-col bg-darkSurface border border-darkBorder rounded-xl overflow-hidden h-full">
         {/* Tab Headers */}

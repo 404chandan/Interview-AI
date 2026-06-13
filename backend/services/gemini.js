@@ -9,7 +9,7 @@ let aiModel = null;
 if (apiKey) {
   try {
     const ai = new GoogleGenerativeAI(apiKey);
-    aiModel = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    aiModel = ai.getGenerativeModel({ model: 'gemini-3.5-flash' });
     console.log('✨ Gemini Generative AI Service initialized successfully.');
   } catch (err) {
     console.error('❌ Failed to initialize Gemini API:', err.message);
@@ -46,17 +46,23 @@ export const parseResumeText = async (text, role, experienceYears) => {
           description: "Engineered high-performance backend pipelines in Go and Python. Managed cache invalidation with Redis."
         }
       ],
+      achievements: [
+        "Optimized database indexing which cut down server load by 40%.",
+        "Won 1st place in Siemens Internal Hackathon for AI Automation.",
+        "Delivered a critical production hotfix that saved $50k in infrastructure costs."
+      ],
       technologies: ["Docker", "AWS", "Linux", "Kubernetes", "Git"]
     };
   }
 
   const prompt = `
-    Analyze the following resume text. Extract skills, projects, professional experience, and technical tools.
+    Analyze the following resume text. Extract skills, projects, professional experience, achievements, and technical tools.
     Provide the output strictly as a JSON object matching this structure:
     {
       "skills": ["skill1", "skill2"],
       "projects": [{"name": "project name", "description": "project desc", "technologies": ["tech1"]}],
       "experience": [{"company": "company name", "role": "job title", "duration": "years/months", "description": "details"}],
+      "achievements": ["achievement1", "achievement2"],
       "technologies": ["tech1", "tech2"]
     }
     
@@ -85,19 +91,65 @@ export const generateQuestion = async (round, resumeData, history = []) => {
   const role = resumeData?.role || "Software Engineer";
   const experienceYears = resumeData?.experienceYears || 2;
   const skills = resumeData?.skills || ["JavaScript", "Python"];
-  
+  const projects = resumeData?.projects || [];
+  const experience = resumeData?.experience || [];
+  const achievements = resumeData?.achievements || [];
+  const technologies = resumeData?.technologies || [];
+
   if (!aiModel) {
-    // Return realistic mock questions based on the round
+    // Return realistic, highly versatile mock questions based on the round and history
     if (round === 'resume') {
-      const questions = [
-        `You mentioned at Siemens DISW that you automated InsightPro workflows reducing manual effort by 80%. Can you explain the system architecture and how you measured this 80% reduction?`,
-        `Regarding your AI Troubleshooting System, why did you choose LLMs for diagnostics, and how did you handle response evaluation and evaluation latency?`,
-        `You list Redis in your skills. In your project at Siemens DISW, how did you handle cache invalidation, and what eviction policy did you choose?`
-      ];
+      const dynamicQuestions = [];
+      
+      // Build questions from experiences
+      if (experience && experience.length > 0) {
+        experience.forEach(exp => {
+          dynamicQuestions.push(`Regarding your role as ${exp.role} at ${exp.company}: you wrote that you "${exp.description}". Can you describe the most challenging technical hurdle you faced in this role?`);
+          dynamicQuestions.push(`At ${exp.company}, you worked as a ${exp.role} for ${exp.duration}. Can you detail the tech stack used and how cache invalidation or database schemas were structured?`);
+        });
+      }
+      
+      // Build questions from projects
+      if (projects && projects.length > 0) {
+        projects.forEach(proj => {
+          dynamicQuestions.push(`Let's discuss your project "${proj.name}". You described it as: "${proj.description}". What were the architectural design tradeoffs you made, and how did you choose ${proj.technologies ? proj.technologies.join(', ') : 'the technologies'}?`);
+        });
+      }
+
+      // Build questions from achievements
+      if (achievements && achievements.length > 0) {
+        achievements.forEach(ach => {
+          dynamicQuestions.push(`In your achievements, you mentioned: "${ach}". Can you share more context on this and explain your individual contribution to this milestone?`);
+        });
+      }
+
+      // Build questions from skills
+      if (skills && skills.length > 0) {
+        const randomSkill = skills[Math.floor(Math.random() * skills.length)];
+        dynamicQuestions.push(`You listed "${randomSkill}" as one of your core skills. Can you explain a complex project where you used "${randomSkill}" and how it helped solve the business problem?`);
+      }
+      
+      // Fallback default questions if arrays are empty
+      if (dynamicQuestions.length === 0) {
+        dynamicQuestions.push(`Could you walk me through your background, highlighting your most significant technical accomplishments?`);
+        dynamicQuestions.push(`Which of the projects on your resume are you most proud of, and what engineering tradeoffs did you make?`);
+        dynamicQuestions.push(`You listed core skills like ${skills.slice(0, 3).join(', ')}. How do you apply these in your day-to-day software development?`);
+      }
+      
+      // Select question based on history length, filtering out any questions that are already in history
+      let selectedQuestionText = dynamicQuestions[history.length % dynamicQuestions.length];
+      
+      // Avoid duplicates if possible
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = dynamicQuestions.filter(q => !askedQuestions.includes(q));
+      if (uniqueUnasked.length > 0) {
+        selectedQuestionText = uniqueUnasked[0];
+      }
+      
       return {
-        questionText: questions[Math.min(history.length, questions.length - 1)],
+        questionText: selectedQuestionText,
         difficulty: 'medium',
-        topics: ['Resume', 'Backend']
+        topics: ['Resume', 'Technical']
       };
     } else if (round === 'dsa') {
       const dsaQuestions = [
@@ -116,46 +168,110 @@ export const generateQuestion = async (round, resumeData, history = []) => {
           topics: ['String', 'Sliding Window'],
           id: 'longest-substring',
           functionName: 'lengthOfLongestSubstring'
+        },
+        {
+          questionText: `Given a string s containing just the characters '(', ')', '{', '}', '[' and ']' determine if the input string is valid.\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.`,
+          codeTemplate: `function isValid(s) {\n    // Write your code here\n};`,
+          difficulty: 'easy',
+          topics: ['Stack', 'String'],
+          id: 'valid-parentheses',
+          functionName: 'isValid'
+        },
+        {
+          questionText: `Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.`,
+          codeTemplate: `function merge(intervals) {\n    // Write your code here\n};`,
+          difficulty: 'medium',
+          topics: ['Array', 'Sorting'],
+          id: 'merge-intervals',
+          functionName: 'merge'
+        },
+        {
+          questionText: `Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.`,
+          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
+          difficulty: 'easy',
+          topics: ['Array', 'Hash Table'],
+          id: 'contains-duplicate',
+          functionName: 'containsDuplicate'
         }
       ];
-      const selected = dsaQuestions[experienceYears > 3 ? 1 : 0];
+      
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = dsaQuestions.filter(q => !askedQuestions.some(asked => asked.includes(q.id) || q.questionText.includes(asked)));
+      const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : dsaQuestions[Math.floor(Math.random() * dsaQuestions.length)];
       return selected;
     } else if (round === 'system_design') {
       const designTopics = [
-        { questionText: "Design a URL Shortener like TinyURL. Focus on database choices, API designs, and how to scale to 100M daily active requests.", difficulty: 'medium' },
-        { questionText: "Design a Rate Limiter system that can be deployed at scale across a distributed API gateway setup.", difficulty: 'medium' },
-        { questionText: "Design WhatsApp. Detail the socket layer, database choice for messaging history, and how to scale notifications for offline users.", difficulty: 'hard' }
+        { questionText: "Design a URL Shortener like TinyURL. Focus on database choices, API designs, and how to scale to 100M daily active requests.", difficulty: 'medium', topics: ['System Design', 'Scaling'] },
+        { questionText: "Design a Rate Limiter system that can be deployed at scale across a distributed API gateway setup.", difficulty: 'medium', topics: ['System Design', 'API Gateway'] },
+        { questionText: "Design WhatsApp. Detail the socket layer, database choice for messaging history, and how to scale notifications for offline users.", difficulty: 'hard', topics: ['System Design', 'Sockets'] },
+        { questionText: "Design a Distributed Cache system. Cover cache coherency, eviction strategies, and node registration.", difficulty: 'hard', topics: ['System Design', 'Caching'] }
       ];
-      return designTopics[experienceYears > 4 ? 2 : (experienceYears > 2 ? 1 : 0)];
+      
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = designTopics.filter(q => !askedQuestions.includes(q.questionText));
+      const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : designTopics[Math.floor(Math.random() * designTopics.length)];
+      return selected;
     } else {
       const behavioral = [
         "Tell me about a time when you had a conflict with a peer or teammate. How did you approach resolving it and what was the outcome?",
         "Describe a project or milestone that failed under your watch. What did you learn and how did it shape your future approach?",
-        "How do you prioritize features or handle shifting requirements from product management when under tight release deadlines?"
+        "How do you prioritize features or handle shifting requirements from product management when under tight release deadlines?",
+        "Tell me about a time when you had to work with a very difficult stakeholder or customer. How did you manage that relationship?",
+        "Describe a situation where you had to make an important technical decision with limited information or data. What was your process?",
+        "Can you share an example of a time you went above and beyond your standard job duties to deliver a critical project?",
+        "Describe a time when you had to quickly learn a new technology or domain to complete a task. How did you ramp up?",
+        "Tell me about a time when you disagreed with your manager's direction. How did you voice your opinion and what was the resolution?",
+        "What is the most complex bug or technical issue you've resolved in production? Walk me through how you diagnosed and fixed it."
       ];
+      
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = behavioral.filter(q => !askedQuestions.includes(q));
+      let selectedQuestionText = uniqueUnasked.length > 0 ? uniqueUnasked[0] : behavioral[Math.floor(Math.random() * behavioral.length)];
+
       return {
-        questionText: behavioral[Math.min(history.length, behavioral.length - 1)],
+        questionText: selectedQuestionText,
         difficulty: 'medium',
         topics: ['Behavioral', 'STAR Methodology']
       };
     }
   }
 
-  // Real LLM Generation
+  // Real LLM Generation with rich context and settings
   const prompt = `
-    Generate an interview question for a candidate with the following profile:
+    You are conducting a premium technical/behavioral interview. Generate a highly relevant and unique interview question for a candidate with the following profile:
     Role: ${role}
     Experience: ${experienceYears} Years
     Skills: ${skills.join(', ')}
+    Technologies: ${technologies.join(', ')}
+    Achievements: ${JSON.stringify(achievements)}
+    Work History/Experiences: ${JSON.stringify(experience)}
+    Projects: ${JSON.stringify(projects)}
     
     Current Round: ${round}
-    Previous Conversation/Questions History: ${JSON.stringify(history)}
+    Previous Interview Questions History: ${JSON.stringify(history.map(h => h.questionText))}
     
     Instructions:
-    - If round is "resume", ask a deep-dive question about their experience, projects, or listed tools.
-    - If round is "dsa", provide a LeetCode style question suitable for a YOE of ${experienceYears}.
-    - If round is "system_design", ask for architectural designs. E.g. 0-2 YOE: URL Shortener, Rate Limiter; 3-5 YOE: WhatsApp, Uber; 5+ YOE: Distributed Cache, Kafka.
-    - If round is "behavioral", ask STAR-format questions.
+    - If round is "resume", generate a deep-dive question targeting one of their listed projects, work experience achievements, or technologies. Refer directly to the name of the company or project. Make it specific and avoid generic questions.
+    - If round is "dsa", you MUST select and return one of the following classic DSA question IDs. Do NOT invent a new question. Provide the exact text, template, functionName, and ID:
+      1. ID: "two-sum", Function: "twoSum", Topics: ["Arrays", "Hash Map"], Difficulty: "easy"
+         Template: "function twoSum(nums, target) {\\n    // Write your code here\\n};"
+         Text: "Given an array of integers 'nums' and an integer 'target', return indices of the two numbers such that they add up to 'target'. You may assume that each input would have exactly one solution, and you may not use the same element twice."
+      2. ID: "longest-substring", Function: "lengthOfLongestSubstring", Topics: ["String", "Sliding Window"], Difficulty: "medium"
+         Template: "function lengthOfLongestSubstring(s) {\\n    // Write your code here\\n};"
+         Text: "Given a string 's', find the length of the longest substring without repeating characters."
+      3. ID: "valid-parentheses", Function: "isValid", Topics: ["Stack", "String"], Difficulty: "easy"
+         Template: "function isValid(s) {\\n    // Write your code here\\n};"
+         Text: "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']' determine if the input string is valid."
+      4. ID: "merge-intervals", Function: "merge", Topics: ["Array", "Sorting"], Difficulty: "medium"
+         Template: "function merge(intervals) {\\n    // Write your code here\\n};"
+         Text: "Given an array of intervals where intervals[i] = [start_i, end_i], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input."
+      5. ID: "contains-duplicate", Function: "containsDuplicate", Topics: ["Array", "Hash Table"], Difficulty: "easy"
+         Template: "function containsDuplicate(nums) {\\n    // Write your code here\\n};"
+         Text: "Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct."
+    - If round is "system_design", ask for architectural designs suitable for YOE of ${experienceYears}. E.g. URL Shortener, Rate Limiter, WhatsApp, or Distributed Cache.
+    - If round is "behavioral", ask STAR-format questions challenging their leadership, conflicts, failures, or task management.
+    
+    CRITICAL: Do NOT generate any question that is identical or highly similar to any question listed in the "Previous Interview Questions History". Ensure high versatility and variety.
     
     Output strictly as a JSON object matching this structure:
     {
@@ -163,19 +279,23 @@ export const generateQuestion = async (round, resumeData, history = []) => {
       "codeTemplate": "boilerplate code string (only for dsa)",
       "difficulty": "easy/medium/hard",
       "topics": ["topic1", "topic2"],
-      "id": "slug-id-for-code-executor-matching-if-classic-dsa-else-new",
+      "id": "slug-id-for-code-executor-matching-classic-dsa-else-new",
       "functionName": "the main function name to evaluate (only for dsa)"
     }
   `;
 
   try {
-    const result = await aiModel.generateContent(prompt);
+    const result = await aiModel.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.85
+      }
+    });
     const response = await result.response;
     const cleanText = response.text().replace(/```json|```/gi, '').trim();
     return JSON.parse(cleanText);
   } catch (err) {
     console.error("Error generating question from Gemini:", err);
-    // Fall back to default question generator if parsing or Gemini fails
     return generateQuestion(round, resumeData, history);
   }
 };
@@ -183,24 +303,55 @@ export const generateQuestion = async (round, resumeData, history = []) => {
 /**
  * Evaluates candidate responses (real-time voice transcript or coding input)
  */
-export const evaluateAnswer = async (questionText, answerText, round) => {
+export const evaluateAnswer = async (questionText, answerText, round, history = []) => {
   if (!aiModel) {
     const randomScore = Math.floor(Math.random() * 3) + 7; // 7, 8, 9
+    
+    let followUp = "That makes sense. Can you elaborate on how you handled the tradeoffs in that situation?";
+    if (round === 'resume') {
+      const followups = [
+        "How did you design cache eviction and handle data consistency in that layout?",
+        "What specific metrics did you look at to evaluate performance improvements?",
+        "If you had to rebuild that project today, what architecture choices would you change?",
+        "How did you secure your backend APIs and handle authentication/authorization in that setup?",
+        "What was the scale of requests/data you processed, and how did you scale your system horizontally?"
+      ];
+      
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = followups.filter(q => !askedQuestions.includes(q));
+      followUp = uniqueUnasked.length > 0 ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] : followups[Math.floor(Math.random() * followups.length)];
+    } else if (round === 'behavioral') {
+      const followups = [
+        "If your teammates had a different perspective, how would you incorporate their opinions?",
+        "Looking back, what is the single biggest lesson you learned from that experience?",
+        "How did you communicate the delay or conflict to project stakeholders?",
+        "What would you do differently if you were faced with the same scenario again?",
+        "How did this experience change the way you mentor juniors or guide other engineers?"
+      ];
+      
+      const askedQuestions = history.map(h => h.questionText);
+      const uniqueUnasked = followups.filter(q => !askedQuestions.includes(q));
+      followUp = uniqueUnasked.length > 0 ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] : followups[Math.floor(Math.random() * followups.length)];
+    }
+
     return {
       score: randomScore,
       feedback: `You demonstrated solid understanding of this topic. You clearly outlined the key parameters. To improve further, consider discussing memory layouts or edge cases like high concurrency.`,
-      followUpQuestion: `That makes sense. Can you elaborate on how your proposed structure handles cache invalidation or unexpected node failures?`
+      followUpQuestion: followUp
     };
   }
 
   const prompt = `
-    You are an technical interviewer conducting a live round of: ${round}.
+    You are a technical interviewer conducting a live round of: ${round}.
     Question Asked: "${questionText}"
     Candidate Answered: "${answerText}"
+    Previous Interview History: ${JSON.stringify(history.map(h => h.questionText))}
     
     Evaluate the response. Grade it on a scale of 0 to 10.
     Generate constructive feedback.
-    Also generate a natural follow-up question extending their answer or addressing a missed edge case.
+    Also generate a natural, conversational follow-up question extending their answer or addressing a missed edge case.
+    
+    CRITICAL: The follow-up question must be unique and must NOT duplicate or overlap with any questions or concepts from the "Previous Interview History".
     
     Output strictly as a JSON object matching this structure:
     {
@@ -211,7 +362,12 @@ export const evaluateAnswer = async (questionText, answerText, round) => {
   `;
 
   try {
-    const result = await aiModel.generateContent(prompt);
+    const result = await aiModel.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8
+      }
+    });
     const response = await result.response;
     const cleanText = response.text().replace(/```json|```/gi, '').trim();
     return JSON.parse(cleanText);

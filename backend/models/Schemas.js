@@ -31,6 +31,7 @@ const ResumeSchema = new mongoose.Schema({
     duration: String,
     description: String
   }],
+  achievements: [String],
   technologies: [String],
   createdAt: { type: Date, default: Date.now }
 });
@@ -40,6 +41,8 @@ const QuestionSchema = new mongoose.Schema({
   round: { type: String, enum: ['resume', 'dsa', 'system_design', 'behavioral'] },
   questionText: String,
   codeTemplate: String, // For DSA questions
+  dsaSlug: String, // Slug to map to test runner cases (e.g. 'two-sum')
+  functionName: String, // Name of the function to invoke for evaluation
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
   topics: [String],
   expectedAnswer: String,

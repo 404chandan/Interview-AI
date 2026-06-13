@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import InterviewerAvatar from './InterviewerAvatar';
 import CodingSandbox from './CodingSandbox';
 import Whiteboard from './Whiteboard';
-import { Mic, MicOff, Video, VideoOff, Volume2, VolumeX, ShieldAlert, Sparkles, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Volume2, VolumeX, ShieldAlert, Sparkles, ChevronRight, CheckCircle2, RefreshCw } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 
 export default function InterviewSession({ interviewData, resumeData, onInterviewFinished }) {
@@ -34,6 +34,78 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [roundStep, setRoundStep] = useState(0); // tracks steps inside each round
   const [finished, setFinished] = useState(false);
   const [inputMode, setInputMode] = useState('voice'); // 'voice' or 'typing'
+  const [displayedQuestion, setDisplayedQuestion] = useState('');
+  const [latency, setLatency] = useState(24);
+  const [timeLeft, setTimeLeft] = useState(300);
+
+  // Timer Effect
+  useEffect(() => {
+    const roundTimes = {
+      1: 300, // 5 min
+      2: 900, // 15 min
+      3: 600, // 10 min
+      4: 300  // 5 min
+    };
+    setTimeLeft(roundTimes[currentRound] || 300);
+  }, [currentRound]);
+
+  useEffect(() => {
+    if (finished) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleTimerExpiry();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentRound, finished]);
+
+  const handleTimerExpiry = () => {
+    alert("Time has expired for this round! Automatically advancing.");
+    advanceRound();
+  };
+
+  const handleSkipQuestion = async () => {
+    setIsThinking(true);
+    try {
+      await getQuestion(currentRound);
+    } catch (err) {
+      console.error("Failed to skip question:", err);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
+  // Latency simulator for the real-time card
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLatency(prev => Math.max(16, Math.min(38, prev + (Math.random() > 0.5 ? 2 : -2))));
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Typewriter reveal effect for interviewer questions
+  useEffect(() => {
+    let index = 0;
+    setDisplayedQuestion('');
+    
+    // Quick conversational reveal speed: 12ms per character
+    const interval = setInterval(() => {
+      setDisplayedQuestion((prev) => prev + questionText.charAt(index));
+      index++;
+      if (index >= questionText.length) {
+        clearInterval(interval);
+      }
+    }, 12);
+    
+    return () => clearInterval(interval);
+  }, [questionText]);
 
   const micOnRef = useRef(micOn);
   useEffect(() => {
@@ -282,12 +354,12 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       if (!res.ok) throw new Error("Answer API error");
       const data = await res.json();
       
-      // Setup dynamic AI follow-up
-      if (roundStep === 0 && currentRound === 1) {
-        // Allow 1 follow-up for resume round
-        setRoundStep(1);
-        setQuestionText(data.evaluation.followUpQuestion);
-        speakText(data.evaluation.followUpQuestion);
+      // Setup dynamic AI follow-up (3 questions total per verbal round: 1 initial + 2 follow-ups)
+      if (roundStep < 2 && (currentRound === 1 || currentRound === 4)) {
+        setRoundStep(prev => prev + 1);
+        const nextFollowUp = data.evaluation.followUpQuestion || "Could you please elaborate on that experience or answer?";
+        setQuestionText(nextFollowUp);
+        speakText(nextFollowUp);
         setTranscript('');
       } else {
         // Move to next round
@@ -295,9 +367,18 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       }
     } catch (err) {
       console.warn("Answer submission offline fallback.");
-      if (roundStep === 0 && currentRound === 1) {
-        setRoundStep(1);
-        const followUp = "That makes sense. How did you design cache eviction mechanisms for Redis?";
+      if (roundStep < 2 && (currentRound === 1 || currentRound === 4)) {
+        setRoundStep(prev => prev + 1);
+        const fallbackQuestions = currentRound === 1 
+          ? [
+              "That makes sense. How did you handle testing and performance optimization on that backend stack?",
+              "I see. Could you explain how you ensured data integrity and consistency during high write concurrency?"
+            ]
+          : [
+              "Thank you for sharing. How did this experience change the way you interact with similar peers or situations?",
+              "Interesting. If you were starting this project/situation again from scratch, what would you do differently?"
+            ];
+        const followUp = fallbackQuestions[roundStep] || "Can you tell me more about that?";
         setQuestionText(followUp);
         speakText(followUp);
         setTranscript('');
@@ -401,6 +482,12 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     return () => clearInterval(interval);
   }, [cameraOn, cameraMetrics]);
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 animate-fade-in text-left">
       
@@ -413,44 +500,56 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
           <span className="text-gray-400">Position: <strong className="text-gray-200">{roleName}</strong></span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Media Controls */}
-          <button 
-            onClick={() => setCameraOn(!cameraOn)} 
-            className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
-          >
-            {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-          </button>
-          
-          <button 
-            onClick={handleMicToggle} 
-            className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
-          >
-            {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-          </button>
+        <div className="flex items-center gap-4">
+          {/* Countdown Timer */}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-300 font-mono font-bold ${
+            timeLeft < 60 
+              ? 'border-red-500/30 bg-red-500/10 text-red-500 animate-pulse' 
+              : 'border-darkBorder bg-darkBg text-gray-300'
+          }`}>
+            <span className={`w-2 h-2 rounded-full bg-current ${timeLeft < 60 ? 'animate-ping' : ''}`} />
+            <span>Time Left: {formatTime(timeLeft)}</span>
+          </div>
 
-          <button 
-            onClick={() => setSpeechVolume(!speechVolume)} 
-            className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
-          >
-            {speechVolume ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Media Controls */}
+            <button 
+              onClick={() => setCameraOn(!cameraOn)} 
+              className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+            >
+              {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
+            </button>
+            
+            <button 
+              onClick={handleMicToggle} 
+              className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+            >
+              {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+            </button>
+
+            <button 
+              onClick={() => setSpeechVolume(!speechVolume)} 
+              className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+            >
+              {speechVolume ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch h-[640px] max-h-[calc(100vh-190px)] min-h-[580px] select-none">
         
-        {/* Left Side: Avatar Panel & Webcam (1/4 columns on large screen) */}
-        <div className="space-y-6 lg:col-span-1 flex flex-col justify-between">
+        {/* Left Side: Avatar Panel & Webcam & Telemetry (1/4 columns on large screen) */}
+        <div className="lg:col-span-1 flex flex-col gap-4 h-full">
           
           {/* AI Avatar Display */}
-          <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center min-h-[260px] relative">
+          <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center h-[260px] relative shrink-0">
             <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
           </div>
 
           {/* Candidate Camera Stream */}
-          <div className="glass-panel rounded-xl p-4 overflow-hidden relative flex-1 flex flex-col justify-end min-h-[220px]">
+          <div className="glass-panel rounded-xl p-3 overflow-hidden relative flex-1 min-h-[140px] flex flex-col justify-end">
             <div className="absolute inset-0 bg-black">
               {cameraOn ? (
                 <video 
@@ -488,15 +587,43 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
               )}
             </div>
           </div>
+
+          {/* AI Core Telemetry Panel */}
+          <div className="glass-panel rounded-xl p-3 h-[100px] shrink-0 text-[10px] flex flex-col justify-between border-brandBlue/10 bg-darkSurface/40">
+            <div className="flex justify-between items-center text-gray-400 font-bold uppercase tracking-wider border-b border-darkBorder/40 pb-1.5">
+              <span>AI Core Telemetry</span>
+              <span className="flex items-center gap-1 text-brandAccent animate-pulse">
+                <span className="w-1.5 h-1.5 bg-brandAccent rounded-full" /> Connected
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-y-1.5 text-gray-300 mt-1 font-mono">
+              <div className="flex justify-between pr-2 border-r border-darkBorder/30">
+                <span className="text-gray-500">Latency:</span>
+                <span className="font-bold text-gray-200">{latency}ms</span>
+              </div>
+              <div className="flex justify-between pl-2">
+                <span className="text-gray-500">Packet Loss:</span>
+                <span className="font-bold text-brandAccent">0.00%</span>
+              </div>
+              <div className="flex justify-between pr-2 border-r border-darkBorder/30">
+                <span className="text-gray-500">Voice Sync:</span>
+                <span className="font-bold text-brandBlue">96kbps</span>
+              </div>
+              <div className="flex justify-between pl-2">
+                <span className="text-gray-500">AI Engine:</span>
+                <span className="font-bold text-brandPurple">v3.5</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Side: Conversation Area / Interactive coding/whiteboard (3/4 columns) */}
-        <div className="lg:col-span-3 flex flex-col bg-darkSurface border border-darkBorder rounded-xl overflow-hidden min-h-[500px]">
+        <div className="lg:col-span-3 flex flex-col bg-darkSurface border border-darkBorder rounded-xl overflow-hidden h-full">
           
           {/* Swap workspaces based on rounds */}
           {currentRound === 1 || currentRound === 4 ? (
             // Verbal Rounds Layout (Resume & Behavioral)
-            <div className="flex-1 flex flex-col justify-between p-6">
+            <div className="flex-1 flex flex-col justify-between p-6 h-full min-h-0">
               
               {/* Question Screen */}
               <div className="space-y-4">
@@ -505,8 +632,9 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Interviewer Prompt</span>
                 </div>
                 
-                <div className="text-lg font-semibold text-gray-100 leading-relaxed border-l-2 border-brandBlue pl-4">
-                  {questionText}
+                <div className="text-lg font-semibold text-gray-100 leading-relaxed border-l-2 border-brandBlue pl-4 min-h-[56px] select-text">
+                  {displayedQuestion}
+                  <span className="inline-block w-1.5 h-4 bg-brandBlue ml-0.5 animate-pulse" />
                 </div>
               </div>
 
@@ -589,34 +717,42 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                      className="w-full h-32 p-4 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-sm text-gray-200 placeholder-gray-600 resize-none leading-relaxed"
                    />
                  )}
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleSubmitAnswer}
-                    disabled={submittingAnswer || !transcript.trim()}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-brandBlue hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-brandBlue/15 disabled:opacity-50"
-                  >
-                    {submittingAnswer ? (
-                      <>
-                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Evaluating...
-                      </>
-                    ) : (
-                      <>
-                        Submit Response
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </>
-                    )}
-                  </button>
-                </div>
+                 <div className="flex justify-between items-center w-full">
+                   <button
+                     type="button"
+                     onClick={handleSkipQuestion}
+                     disabled={isThinking || submittingAnswer}
+                     className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+                   >
+                     <RefreshCw className="w-3.5 h-3.5" />
+                     Ask different question
+                   </button>
+                   <button
+                     onClick={handleSubmitAnswer}
+                     disabled={submittingAnswer || !transcript.trim()}
+                     className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-brandBlue hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-brandBlue/15 disabled:opacity-50"
+                   >
+                     {submittingAnswer ? (
+                       <>
+                         <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                         </svg>
+                         Evaluating...
+                       </>
+                     ) : (
+                       <>
+                         Submit Response
+                         <ChevronRight className="w-3.5 h-3.5" />
+                       </>
+                     )}
+                   </button>
+                 </div>
               </div>
             </div>
           ) : currentRound === 2 ? (
             // Coding Round Layout (Monaco Editor Integration)
-            <div className="flex-1 p-6">
+            <div className="h-full min-h-0 flex flex-col p-6">
               {currentQuestion && (
                 <CodingSandbox 
                   question={currentQuestion} 
@@ -627,7 +763,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             </div>
           ) : (
             // System Design Layout (Whiteboard Drawing Integration)
-            <div className="flex-1 p-6">
+            <div className="h-full min-h-0 flex flex-col p-6">
               {currentQuestion && (
                 <Whiteboard 
                   question={currentQuestion}

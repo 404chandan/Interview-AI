@@ -151,7 +151,7 @@ export default function Whiteboard({
   const findNode = (id) => nodes.find(n => n.id === id);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[580px] text-left select-none">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full text-left select-none">
       
       {/* Left Column: Canvas Controls & Elements */}
       <div className="flex flex-col bg-darkSurface border border-darkBorder rounded-xl p-5 space-y-4">
