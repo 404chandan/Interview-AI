@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import { 
   parseResumeText, 
   generateQuestion, 
@@ -26,13 +27,67 @@ const inMemoryDb = {
   reports: []
 };
 
-// Middleware to get or create mock user
-const getUserId = async () => {
+// Auth Helpers using built-in Crypto module
+const hashPassword = (password) => {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+};
+
+const verifyPassword = (password, storedPassword) => {
+  if (!storedPassword || !storedPassword.includes(':')) return false;
+  const [salt, hash] = storedPassword.split(':');
+  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return hash === verifyHash;
+};
+
+const generateToken = (user) => {
+  const payload = JSON.stringify({ userId: user._id, email: user.email, username: user.username });
+  const signature = crypto.createHmac('sha256', process.env.JWT_SECRET || 'fallback-secret-key-12345').update(payload).digest('hex');
+  return Buffer.from(payload).toString('base64') + '.' + signature;
+};
+
+const verifyToken = (token) => {
+  if (!token) return null;
+  try {
+    const [payloadB64, signature] = token.split('.');
+    const payload = Buffer.from(payloadB64, 'base64').toString('utf-8');
+    const expectedSignature = crypto.createHmac('sha256', process.env.JWT_SECRET || 'fallback-secret-key-12345').update(payload).digest('hex');
+    if (signature === expectedSignature) {
+      return JSON.parse(payload);
+    }
+  } catch (e) {
+    // Ignore verification errors
+  }
+  return null;
+};
+
+// Helper to get current user ID from token, fallback to mock user
+const getUserId = async (req) => {
+  // 1. Check if token was parsed by auth middleware or present in headers
+  if (req && req.user && req.user.userId) {
+    return req.user.userId;
+  }
+  const authHeader = req?.headers?.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token);
+    if (decoded && decoded.userId) {
+      return decoded.userId;
+    }
+  }
+  const xUserId = req?.headers?.['x-user-id'];
+  if (xUserId) {
+    return xUserId;
+  }
+
+  // 2. Default fallback (e.g. for mock or offline development)
   try {
     if (mongoose.connection.readyState === 1) {
       let user = await User.findOne({ username: 'chandan' });
       if (!user) {
-        user = await User.create({ username: 'chandan', email: 'chandan@example.com' });
+        const dummyPassword = hashPassword('chandan123');
+        user = await User.create({ username: 'chandan', email: 'chandan@example.com', password: dummyPassword });
       }
       return user._id;
     }
@@ -43,12 +98,106 @@ const getUserId = async () => {
 };
 
 /**
+ * Authentication Endpoints
+ */
+router.post('/auth/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+
+    const hashedPassword = hashPassword(password);
+
+    if (mongoose.connection.readyState === 1) {
+      // Check if user exists
+      const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+
+      const user = await User.create({
+        username,
+        email,
+        password: hashedPassword
+      });
+
+      const token = generateToken(user);
+      res.status(201).json({
+        success: true,
+        token,
+        user: { _id: user._id, username: user.username, email: user.email }
+      });
+    } else {
+      // In-memory fallback DB
+      const existingUser = inMemoryDb.users.find(u => u.email === email || u.username === username);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+
+      const mockId = 'mock-user-' + Date.now();
+      const user = { _id: mockId, username, email, password: hashedPassword };
+      inMemoryDb.users.push(user);
+
+      const token = generateToken(user);
+      res.status(201).json({
+        success: true,
+        token,
+        user: { _id: user._id, username: user.username, email: user.email }
+      });
+    }
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      const user = await User.findOne({ email });
+      if (!user || !verifyPassword(password, user.password)) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const token = generateToken(user);
+      res.json({
+        success: true,
+        token,
+        user: { _id: user._id, username: user.username, email: user.email }
+      });
+    } else {
+      // In-memory fallback DB
+      const user = inMemoryDb.users.find(u => u.email === email);
+      if (!user || !verifyPassword(password, user.password)) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const token = generateToken(user);
+      res.json({
+        success: true,
+        token,
+        user: { _id: user._id, username: user.username, email: user.email }
+      });
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * 1. Upload & Parse Resume
  */
 router.post('/resume/upload', upload.single('resume'), async (req, res) => {
   try {
     const { role, experienceYears } = req.body;
-    const userId = await getUserId();
+    const userId = await getUserId(req);
     
     // Read files or simulate extraction
     let resumeText = "Experienced backend developer with 2 YOE. Skills: Python, Golang, Redis, Docker, AWS, Linux. Experience at Siemens DISW as SDE.";
@@ -97,7 +246,7 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
 router.post('/interview/start', async (req, res) => {
   try {
     const { role, experienceYears, resumeId } = req.body;
-    const userId = await getUserId();
+    const userId = await getUserId(req);
 
     let interview;
     if (mongoose.connection.readyState === 1) {
@@ -257,7 +406,7 @@ router.post('/interview/:id/code', async (req, res) => {
   try {
     const interviewId = req.params.id;
     const { questionId, code, language, questionText, functionName } = req.body;
-    const userId = await getUserId();
+    const userId = await getUserId(req);
 
     // 1. Run local sandboxed tests
     // If the DSA question matches a slug, it runs actual tests, else runs structure validation
@@ -510,11 +659,12 @@ router.post('/interview/:id/finish', async (req, res) => {
  */
 router.get('/interviews/history', async (req, res) => {
   try {
+    const userId = await getUserId(req);
     let list = [];
     if (mongoose.connection.readyState === 1) {
-      list = await Interview.find().sort({ createdAt: -1 });
+      list = await Interview.find({ userId }).sort({ createdAt: -1 });
     } else {
-      list = [...inMemoryDb.interviews].sort((a, b) => b.createdAt - a.createdAt);
+      list = inMemoryDb.interviews.filter(i => i.userId === userId).sort((a, b) => b.createdAt - a.createdAt);
     }
     res.json(list);
   } catch (err) {
@@ -623,11 +773,12 @@ router.post('/leetcode/generate', async (req, res) => {
  */
 router.get('/analytics', async (req, res) => {
   try {
+    const userId = await getUserId(req);
     let list = [];
     if (mongoose.connection.readyState === 1) {
-      list = await Interview.find({ status: 'completed' });
+      list = await Interview.find({ userId, status: 'completed' });
     } else {
-      list = inMemoryDb.interviews.filter(i => i.status === 'completed');
+      list = inMemoryDb.interviews.filter(i => i.userId === userId && i.status === 'completed');
     }
 
     // Default trend data

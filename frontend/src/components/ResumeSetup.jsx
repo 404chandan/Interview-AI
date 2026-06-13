@@ -10,6 +10,7 @@ export default function ResumeSetup({ onStartInterview }) {
   const [jobDescription, setJobDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedInterviewer, setSelectedInterviewer] = useState('Sarah');
 
   const roles = [
     'Software Engineer',
@@ -93,6 +94,7 @@ export default function ResumeSetup({ onStartInterview }) {
           role,
           experienceYears: experience,
           resumeId,
+          interviewer: selectedInterviewer,
         }),
       });
 
@@ -104,7 +106,7 @@ export default function ResumeSetup({ onStartInterview }) {
       
       // Pass data back to parent
       onStartInterview({
-        interview: startData.interview,
+        interview: { ...startData.interview, interviewerAvatar: selectedInterviewer },
         resume: uploadData.resume
       });
     } catch (err) {
@@ -123,6 +125,7 @@ export default function ResumeSetup({ onStartInterview }) {
           resumeId: mockResumeId,
           status: 'ongoing',
           currentRound: 1,
+          interviewerAvatar: selectedInterviewer,
           scores: { resume: 0, projects: 0, technical: 0, dsa: 0, systemDesign: 0, behavioral: 0 },
           finalScore: 0,
           hiringDecision: 'Pending',
@@ -244,6 +247,48 @@ export default function ResumeSetup({ onStartInterview }) {
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Select AI Interviewer */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Select AI Interviewer</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setSelectedInterviewer('Sarah')}
+                className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+                  selectedInterviewer === 'Sarah' 
+                    ? 'border-brandBlue bg-brandBlue/10 shadow-lg shadow-brandBlue/5' 
+                    : 'border-darkBorder bg-darkBg/30 hover:border-gray-600'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-md text-sm">
+                  S
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-200">Sarah</div>
+                  <div className="text-[10px] text-gray-500 font-medium">AI Technical Recruiter (Female)</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedInterviewer('David')}
+                className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+                  selectedInterviewer === 'David' 
+                    ? 'border-brandPurple bg-brandPurple/10 shadow-lg shadow-brandPurple/5' 
+                    : 'border-darkBorder bg-darkBg/30 hover:border-gray-600'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brandBlue to-blue-700 flex items-center justify-center font-bold text-white shadow-md text-sm">
+                  D
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-gray-200">David</div>
+                  <div className="text-[10px] text-gray-500 font-medium">Lead Systems Architect (Male)</div>
+                </div>
+              </button>
             </div>
           </div>
 

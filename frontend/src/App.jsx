@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
@@ -13,6 +13,40 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [interviewId, setInterviewId] = useState(null);
   const [sessionData, setSessionData] = useState({ interview: null, resume: null });
+
+  // Auto-login and fetch interceptor
+  useEffect(() => {
+    // 1. Inject global fetch interceptor to automatically append Bearer token
+    const originalFetch = window.fetch;
+    window.fetch = async (url, options = {}) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        options.headers = {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        };
+      }
+      return originalFetch(url, options);
+    };
+
+    // 2. Restore active session
+    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('token');
+    if (savedUser && savedToken) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser({
+          name: parsed.username,
+          email: parsed.email,
+          _id: parsed._id,
+          token: savedToken
+        });
+        setView('dashboard');
+      } catch (e) {
+        console.error("Error restoring session:", e);
+      }
+    }
+  }, []);
 
   const handleStartInterview = (data) => {
     setSessionData(data);
@@ -31,6 +65,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     setView('landing');
   };
