@@ -3,7 +3,54 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { Play, Code, BookOpen, Award, Zap, AlertTriangle, CheckCircle, ChevronRight, Eye, Video } from 'lucide-react';
 import { BACKEND_URL } from '../config';
 
-export default function Dashboard({ onNavigate, setInterviewId }) {
+export default function Dashboard({ onNavigate, setInterviewId, user }) {
+  const isFrontend = user?.role === 'Frontend Engineer';
+  const isML = user?.role === 'ML Engineer';
+
+  const personalData = {
+    weakSpots: isFrontend 
+      ? [
+          { topic: "CSS Layouts", detail: "Flexbox/Grid layout boundary rendering issues." },
+          { topic: "React Rendering", detail: "Inefficient state hooks causing redundant re-renders." }
+        ]
+      : isML
+        ? [
+            { topic: "Model Cache", detail: "GPU cache memory leaking on pipeline re-runs." },
+            { topic: "CNN Overfitting", detail: "Failing regularization on sparse custom datasets." }
+          ]
+        : [
+            { topic: "Dynamic Programming", detail: "Failed edge cases on string alignments." },
+            { topic: "System Design", detail: "Missed AOF rewrites during Redis persistence questions." }
+          ],
+    strengths: isFrontend
+      ? [
+          { topic: "State Management", detail: "Clean usage of state hooks and context providers." },
+          { topic: "DOM API", detail: "Optimal document tree traversal bounds." }
+        ]
+      : isML
+        ? [
+            { topic: "Linear Algebra", detail: "Excellent matrix manipulation concepts." },
+            { topic: "Feature Engineering", detail: "Optimal data pre-processing implementations." }
+          ]
+        : [
+            { topic: "Sliding Window", detail: "Excellent solution structure." },
+            { topic: "General Backend", detail: "Clear concepts of caches and Docker setups." }
+          ],
+    recommendations: isFrontend
+      ? [
+          { title: "Optimize Component Rendering", detail: "Practice dynamic rendering hooks on Monaco", route: "sandbox" },
+          { title: "Design Web App Layout", detail: "Build whiteboard layouts for responsive design", route: "setup" }
+        ]
+      : isML
+        ? [
+            { title: "Array Multiplication", detail: "Practice multidimensional array indexing", route: "sandbox" },
+            { title: "Design ML Pipelines", detail: "Build whiteboard schemas for ML data lakes", route: "setup" }
+        ]
+      : [
+          { title: "Practice Sliding Window", detail: "Solve Google Medium questions", route: "sandbox" },
+          { title: "System Design Whiteboard", detail: "Mock build TinyURL or Rate Limiters", route: "setup" }
+        ]
+  };
   const [analytics, setAnalytics] = useState({
     totalSessions: 0,
     averageScore: 0,
@@ -61,10 +108,10 @@ export default function Dashboard({ onNavigate, setInterviewId }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
-            Welcome back, Chandan
+            Welcome back, {user?.name || 'Chandan'}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
-            Your personal AI Coach has parsed 1 resume and has 4 recommendations ready.
+            Your personal AI Coach has parsed 1 resume and has recommendations ready for a target <strong className="text-brandBlue">{user?.role || 'Backend Engineer'}</strong> role.
           </p>
         </div>
         
@@ -243,14 +290,12 @@ export default function Dashboard({ onNavigate, setInterviewId }) {
                 <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" /> Focus Weak Spots
               </span>
               <div className="space-y-2">
-                <div className="flex items-start gap-2 text-xs text-gray-300">
-                  <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
-                  <span><strong>Dynamic Programming:</strong> Failed edge cases on string alignments.</span>
-                </div>
-                <div className="flex items-start gap-2 text-xs text-gray-300">
-                  <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
-                  <span><strong>System Design:</strong> Missed AOF rewrites during Redis persistence questions.</span>
-                </div>
+                {personalData.weakSpots.map((item, index) => (
+                  <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
+                    <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <span><strong>{item.topic}:</strong> {item.detail}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -259,14 +304,12 @@ export default function Dashboard({ onNavigate, setInterviewId }) {
                 <CheckCircle className="w-3.5 h-3.5 text-brandAccent" /> Top Strengths
               </span>
               <div className="space-y-2">
-                <div className="flex items-start gap-2 text-xs text-gray-300">
-                  <span className="w-1.5 h-1.5 bg-brandAccent rounded-full mt-1.5 flex-shrink-0" />
-                  <span><strong>Sliding Window:</strong> Excellent solution structure.</span>
-                </div>
-                <div className="flex items-start gap-2 text-xs text-gray-300">
-                  <span className="w-1.5 h-1.5 bg-brandAccent rounded-full mt-1.5 flex-shrink-0" />
-                  <span><strong>General Backend:</strong> Clear concepts of caches and Docker setups.</span>
-                </div>
+                {personalData.strengths.map((item, index) => (
+                  <div key={index} className="flex items-start gap-2 text-xs text-gray-300">
+                    <span className="w-1.5 h-1.5 bg-brandAccent rounded-full mt-1.5 flex-shrink-0" />
+                    <span><strong>{item.topic}:</strong> {item.detail}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -277,27 +320,19 @@ export default function Dashboard({ onNavigate, setInterviewId }) {
               <BookOpen className="w-4 h-4 text-brandBlue" /> Recommended Preparation
             </h2>
             <div className="space-y-3">
-              <button
-                onClick={() => onNavigate('sandbox')}
-                className="w-full flex items-center justify-between p-3 rounded-lg bg-darkSurface/30 border border-darkBorder hover:border-gray-700 transition-colors text-left"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-gray-200">Practice Sliding Window</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">Solve Google Medium questions</div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-              </button>
-              
-              <button
-                onClick={() => onNavigate('setup')}
-                className="w-full flex items-center justify-between p-3 rounded-lg bg-darkSurface/30 border border-darkBorder hover:border-gray-700 transition-colors text-left"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-gray-200">System Design Whiteboard</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">Mock build TinyURL or Rate Limiters</div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-              </button>
+              {personalData.recommendations.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => onNavigate(item.route)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg bg-darkSurface/30 border border-darkBorder hover:border-gray-700 transition-colors text-left"
+                >
+                  <div>
+                    <div className="text-xs font-semibold text-gray-200">{item.title}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{item.detail}</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+              ))}
             </div>
           </div>
 
