@@ -95,7 +95,7 @@ export default function App() {
             <Layers className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent group-hover:text-white transition-colors">
+            <h1 className="text-base font-bold text-gray-100 group-hover:text-brandBlue transition-colors">
               Interview AI
             </h1>
             <span className="text-[10px] text-gray-500 font-bold block -mt-0.5">AI mock coach & prep</span>

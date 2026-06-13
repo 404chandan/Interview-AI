@@ -54,7 +54,7 @@ export default function LandingPage({ onEnterPlatform }) {
           <span>Next-Generation AI Interview Coaching</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight">
+        <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-gray-50 leading-tight">
           Master Technical Interviews with{' '}
           <span className="bg-gradient-to-r from-brandBlue via-indigo-400 to-brandPurple bg-clip-text text-transparent">
             Interview AI

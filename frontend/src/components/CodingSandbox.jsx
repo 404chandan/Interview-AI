@@ -16,6 +16,28 @@ export default function CodingSandbox({
   
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
+  const [editorTheme, setEditorTheme] = useState(() => 
+    document.documentElement.classList.contains('dark') ? 'vs-dark' : 'light'
+  );
+
+  useEffect(() => {
+    // 1. Sync theme initially
+    const isDark = document.documentElement.classList.contains('dark');
+    setEditorTheme(isDark ? 'vs-dark' : 'light');
+
+    // 2. Setup observer to toggle theme when class on documentElement changes
+    const observer = new MutationObserver(() => {
+      const darkActive = document.documentElement.classList.contains('dark');
+      setEditorTheme(darkActive ? 'vs-dark' : 'light');
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Default templates if question.codeTemplate isn't provided
   const templates = {
@@ -185,8 +207,8 @@ export default function CodingSandbox({
                 {question?.questionText ? (question.questionText.includes('Given') ? 'Coding Assignment' : question.questionText) : 'DSA Coding Assessment'}
               </h2>
               
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line border-t border-darkBorder/40 pt-4">
-                {question?.questionText || "Please review code structure and solve."}
+              <div className="text-sm text-gray-300 dark:text-gray-200 leading-relaxed border-t border-darkBorder/40 pt-4 space-y-3">
+                {renderMarkdown(question?.questionText || "Please review code structure and solve.")}
               </div>
             </div>
           )}
@@ -317,8 +339,8 @@ export default function CodingSandbox({
                   {/* Feedback block */}
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">AI feedback & suggestions</span>
-                    <div className="p-4 rounded-lg bg-darkBg/60 border border-darkBorder text-xs text-gray-300 leading-relaxed whitespace-pre-line">
-                      {submitResult.aiFeedback}
+                    <div className="p-4 rounded-lg bg-darkBg/60 border border-darkBorder text-xs text-gray-300 leading-relaxed">
+                      {renderMarkdown(submitResult.aiFeedback)}
                     </div>
                   </div>
                 </div>
@@ -359,7 +381,7 @@ export default function CodingSandbox({
           <Editor
             height="100%"
             language={language}
-            theme="vs-dark"
+            theme={editorTheme}
             value={code}
             onChange={(val) => setCode(val)}
             options={{
@@ -396,4 +418,99 @@ export default function CodingSandbox({
       </div>
     </div>
   );
+}
+
+// Basic Markdown parser helper
+function renderMarkdown(text) {
+  if (!text) return null;
+
+  // Split by code blocks ```
+  const parts = text.split(/(```[\s\S]*?```)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('```')) {
+      // Clean up triple backticks and language tag
+      const lines = part.slice(3, -3).trim().split('\n');
+      let content = lines.join('\n');
+      const firstLine = lines[0]?.trim();
+      if (['javascript', 'js', 'python', 'py', 'cpp', 'c++', 'java', 'text', 'html', 'json'].includes(firstLine?.toLowerCase())) {
+        content = lines.slice(1).join('\n');
+      }
+      return (
+        <pre key={index} className="my-3 p-3 bg-gray-900/90 dark:bg-black/40 border border-darkBorder rounded-lg overflow-x-auto font-mono text-xs text-gray-200">
+          <code>{content}</code>
+        </pre>
+      );
+    } else {
+      // Handle lines
+      const lines = part.split('\n');
+      return (
+        <div key={index} className="space-y-2">
+          {lines.map((line, lIdx) => {
+            const trimmed = line.trim();
+            if (!trimmed && line === '') {
+              return <div key={lIdx} className="h-2" />;
+            }
+
+            // Headers
+            if (trimmed.startsWith('### ')) {
+              return (
+                <h3 key={lIdx} className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-4 mb-2 uppercase tracking-wide">
+                  {parseInline(trimmed.substring(4))}
+                </h3>
+              );
+            }
+            if (trimmed.startsWith('## ')) {
+              return (
+                <h2 key={lIdx} className="text-base font-bold text-gray-900 dark:text-gray-100 mt-5 mb-2">
+                  {parseInline(trimmed.substring(3))}
+                </h2>
+              );
+            }
+            if (trimmed.startsWith('# ')) {
+              return (
+                <h1 key={lIdx} className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">
+                  {parseInline(trimmed.substring(2))}
+                </h1>
+              );
+            }
+
+            // Unordered list
+            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+              return (
+                <ul key={lIdx} className="list-disc pl-5 my-1 space-y-1">
+                  <li className="text-sm text-gray-600 dark:text-gray-300">{parseInline(trimmed.substring(2))}</li>
+                </ul>
+              );
+            }
+
+            // Paragraph
+            return (
+              <p key={lIdx} className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {parseInline(line)}
+              </p>
+            );
+          })}
+        </div>
+      );
+    }
+  });
+}
+
+function parseInline(text) {
+  // Split by bold (**text**)
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-extrabold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
+    }
+    // Split by inline code (`code`)
+    const codeParts = part.split(/(`.*?`)/g);
+    return codeParts.map((subPart, subIdx) => {
+      if (subPart.startsWith('`') && subPart.endsWith('`')) {
+        return <code key={subIdx} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 border border-darkBorder rounded text-xs font-mono text-brandBlue">{subPart.slice(1, -1)}</code>;
+      }
+      return subPart;
+    });
+  });
 }

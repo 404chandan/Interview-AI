@@ -227,7 +227,7 @@ export default function Whiteboard({
           onMouseMove={handleMouseMove}
           onMouseUp={() => handleMouseUp()}
           className="flex-1 bg-darkBg/30 relative cursor-default overflow-hidden"
-          style={{ backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px)', bgSize: '20px 20px' }}
+          style={{ backgroundImage: 'radial-gradient(var(--grid-dots) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
         >
           {nodes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs pointer-events-none">

@@ -115,7 +115,7 @@ export default function ReportView({ interviewId, onNavigate }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <span className="text-xs font-bold text-brandBlue uppercase tracking-wider">Report Center</span>
-          <h1 className="text-3xl font-extrabold text-white mt-1">Detailed Interview Assessment</h1>
+          <h1 className="text-3xl font-extrabold text-gray-50 mt-1">Detailed Interview Assessment</h1>
           <p className="text-gray-400 text-xs mt-1">Session ID: {interviewId || 'mock-session-id'}</p>
         </div>
 
@@ -166,7 +166,7 @@ export default function ReportView({ interviewId, onNavigate }) {
               </div>
 
               <p className="text-xs text-gray-300 leading-relaxed">
-                {report?.candidateSummary}
+                {parseReportMarkdown(report?.candidateSummary)}
               </p>
             </div>
           </div>
@@ -213,9 +213,9 @@ export default function ReportView({ interviewId, onNavigate }) {
 
                   <div className="bg-brandPurple/5 border border-brandPurple/10 rounded-lg p-3 text-xs">
                     <span className="text-[10px] text-brandPurple font-bold uppercase block mb-1">AI Assessor feedback</span>
-                    <p className="text-gray-300 leading-relaxed">
-                      {q.feedback}
-                    </p>
+                    <div className="text-gray-300 leading-relaxed">
+                      {parseReportMarkdown(q.feedback)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -234,8 +234,8 @@ export default function ReportView({ interviewId, onNavigate }) {
             <div className="h-56 w-full flex justify-center items-center">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="subject" />
+                  <PolarGrid stroke="var(--color-border)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--color-gray-500)', fontSize: 10 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tickLine={false} tick={false} />
                   <Radar name="Candidate" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} />
                 </RadarChart>
@@ -316,4 +316,51 @@ export default function ReportView({ interviewId, onNavigate }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Lightweight inline markdown parser for reports — handles **bold**, `code`, and ### headers
+ */
+function parseReportMarkdown(text) {
+  if (!text) return null;
+  
+  const lines = text.split('\n');
+  return lines.map((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <br key={idx} />;
+    
+    // Headings
+    if (trimmed.startsWith('### ')) {
+      return <strong key={idx} className="block text-sm font-bold text-gray-100 mt-3 mb-1">{parseInlineReport(trimmed.substring(4))}</strong>;
+    }
+    if (trimmed.startsWith('## ')) {
+      return <strong key={idx} className="block text-sm font-bold text-gray-100 mt-3 mb-1">{parseInlineReport(trimmed.substring(3))}</strong>;
+    }
+    if (trimmed.startsWith('# ')) {
+      return <strong key={idx} className="block text-base font-bold text-gray-100 mt-4 mb-1">{parseInlineReport(trimmed.substring(2))}</strong>;
+    }
+    
+    // List items
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      return <li key={idx} className="ml-4 list-disc text-gray-300">{parseInlineReport(trimmed.substring(2))}</li>;
+    }
+    
+    return <span key={idx} className="block">{parseInlineReport(line)}</span>;
+  });
+}
+
+function parseInlineReport(text) {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-bold text-gray-100">{part.slice(2, -2)}</strong>;
+    }
+    const codeParts = part.split(/(`.*?`)/g);
+    return codeParts.map((subPart, subIdx) => {
+      if (subPart.startsWith('`') && subPart.endsWith('`')) {
+        return <code key={subIdx} className="px-1 py-0.5 bg-gray-800 border border-darkBorder rounded text-[10px] font-mono text-brandBlue">{subPart.slice(1, -1)}</code>;
+      }
+      return subPart;
+    });
+  });
 }

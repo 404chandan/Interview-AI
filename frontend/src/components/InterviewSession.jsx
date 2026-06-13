@@ -43,6 +43,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const mainVideoRef = useRef(null);
   const pipVideoRef = useRef(null);
   const sidebarVideoRef = useRef(null);
+  const persistentVideoRef = useRef(null);
 
   // Timer Effect
   useEffect(() => {
@@ -123,6 +124,22 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
   const sessionFillersCountRef = useRef(0);
+  const voicesLoadedRef = useRef(false);
+
+  // Pre-warm speech synthesis voices (Chrome loads them async)
+  useEffect(() => {
+    const synth = synthRef.current;
+    if (!synth) return;
+    
+    // Force initial load
+    synth.getVoices();
+    
+    const handleVoicesChanged = () => {
+      voicesLoadedRef.current = true;
+    };
+    synth.addEventListener('voiceschanged', handleVoicesChanged);
+    return () => synth.removeEventListener('voiceschanged', handleVoicesChanged);
+  }, []);
 
   const interviewId = interviewData?._id || 'mock-interview';
   const roleName = resumeData?.role || 'Backend Engineer';
@@ -189,6 +206,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       if (mainVideoRef.current) mainVideoRef.current.srcObject = webcamStream;
       if (pipVideoRef.current) pipVideoRef.current.srcObject = webcamStream;
       if (sidebarVideoRef.current) sidebarVideoRef.current.srcObject = webcamStream;
+      if (persistentVideoRef.current) persistentVideoRef.current.srcObject = webcamStream;
     }
   }, [webcamStream]);
 
@@ -271,7 +289,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     };
   }, []);
 
-  // 4. Trigger Speech Synthesis (TTS)
+  // 4. Trigger Speech Synthesis (TTS) with gender-appropriate voice
   const speakText = (text) => {
     if (!synthRef.current || !speechVolume) return;
     
@@ -282,6 +300,37 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     utterance.onstart = () => setIsTalking(true);
     utterance.onend = () => setIsTalking(false);
     utterance.onerror = () => setIsTalking(false);
+
+    // Pick a female voice for Sarah avatar, male voice for David
+    const avatarName = interviewData?.interviewerAvatar || 'Sarah';
+    const isFemale = avatarName.toLowerCase() === 'sarah';
+    const voices = synthRef.current.getVoices();
+    
+    if (voices.length > 0) {
+      // Try to find a matching gender voice
+      let selectedVoice = null;
+      if (isFemale) {
+        // Prefer well-known female voices
+        selectedVoice = voices.find(v => /zira|female|samantha|victoria|karen|fiona|hazel|susan|jenny|aria/i.test(v.name));
+        // Fallback: pick any English voice that isn't known-male
+        if (!selectedVoice) {
+          selectedVoice = voices.find(v => v.lang.startsWith('en') && !/david|mark|james|daniel|george|male/i.test(v.name));
+        }
+      } else {
+        // Male voice
+        selectedVoice = voices.find(v => /david|mark|james|daniel|george|male/i.test(v.name));
+        if (!selectedVoice) {
+          selectedVoice = voices.find(v => v.lang.startsWith('en'));
+        }
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+    }
+
+    utterance.rate = 1.0;
+    utterance.pitch = isFemale ? 1.15 : 0.95;
     
     synthRef.current.speak(utterance);
   };
@@ -795,55 +844,57 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
               
               {/* Active-Speaker Video Call Stage */}
               <div className="relative w-full h-[360px] bg-black rounded-xl overflow-hidden border border-darkBorder flex items-center justify-center shrink-0 mb-6">
-                {aiActive ? (
-                  // AI Active: Large Interviewer, Small PIP Candidate Webcam
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-darkSurface to-black relative">
-                    <div className="scale-125">
-                      <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
-                    </div>
-                    
-                    {/* PIP Candidate Webcam Overlay */}
-                    {cameraOn && (
-                      <div className="absolute bottom-4 right-4 w-40 h-28 bg-black rounded-lg border border-brandBlue shadow-lg overflow-hidden z-20">
-                        <video
-                          ref={setPipVideo}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="w-full h-full object-contain transform scale-x-[-1] bg-black"
-                        />
-                        <div className="absolute bottom-1 left-1 bg-black/60 text-[8px] font-semibold text-white px-1 py-0.5 rounded">
-                          You (Candidate)
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  // Candidate Active: Large Candidate Webcam, Small PIP Interviewer
-                  <div className="w-full h-full relative bg-black">
-                    {cameraOn ? (
-                      <video
-                        ref={setMainVideo}
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-full h-full object-contain transform scale-x-[-1] bg-black"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
-                        Camera Feed Off
-                      </div>
-                    )}
 
-                    {/* PIP Interviewer Overlay */}
-                    <div className="absolute bottom-4 right-4 w-28 h-28 bg-darkSurface/90 rounded-lg border border-darkBorder shadow-lg flex items-center justify-center overflow-hidden z-20">
-                      <div className="scale-50">
-                        <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
-                      </div>
-                      <div className="absolute bottom-1 left-1 bg-black/60 text-[8px] font-semibold text-white px-1 py-0.5 rounded">
-                        Interviewer ({interviewData?.interviewerAvatar || 'Sarah'})
-                      </div>
+                {/* Persistent camera video element — never unmounted */}
+                {cameraOn && (
+                  <video
+                    ref={(el) => {
+                      persistentVideoRef.current = el;
+                      if (el && webcamStream) el.srcObject = webcamStream;
+                    }}
+                    autoPlay
+                    muted
+                    playsInline
+                    className={`absolute transform scale-x-[-1] bg-black transition-all duration-300 ease-in-out z-10 ${
+                      aiActive
+                        ? 'bottom-4 right-4 w-40 h-28 rounded-lg border border-brandBlue shadow-lg'
+                        : 'inset-0 w-full h-full object-contain rounded-xl'
+                    }`}
+                    style={aiActive ? {} : { position: 'absolute', top: 0, left: 0 }}
+                  />
+                )}
+
+                {/* AI Interviewer layer */}
+                <div className={`absolute transition-all duration-300 ease-in-out flex items-center justify-center ${
+                  aiActive
+                    ? 'inset-0 w-full h-full bg-gradient-to-b from-darkSurface to-black z-0'
+                    : 'bottom-4 right-4 w-28 h-28 bg-darkSurface/90 rounded-lg border border-darkBorder shadow-lg z-20'
+                }`}>
+                  <div className={aiActive ? 'scale-125' : 'scale-50'}>
+                    <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
+                  </div>
+                  {!aiActive && (
+                    <div className="absolute bottom-1 left-1 bg-black/60 text-[8px] font-semibold text-white px-1 py-0.5 rounded">
+                      Interviewer ({interviewData?.interviewerAvatar || 'Sarah'})
                     </div>
+                  )}
+                </div>
+
+                {/* Candidate label when candidate is large */}
+                {aiActive && cameraOn && (
+                  <div className="absolute bottom-4 right-4 z-20 pointer-events-none" style={{ bottom: '4.5rem', right: '1rem' }}>
+                  </div>
+                )}
+                {aiActive && cameraOn && (
+                  <div className="absolute z-20 text-[8px] font-semibold text-white px-1 py-0.5 rounded bg-black/60" style={{ bottom: '1.15rem', right: '1.15rem' }}>
+                    You (Candidate)
+                  </div>
+                )}
+
+                {/* No camera fallback */}
+                {!cameraOn && !aiActive && (
+                  <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
+                    Camera Feed Off
                   </div>
                 )}
 

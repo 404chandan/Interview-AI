@@ -109,7 +109,7 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-gray-50">
             Welcome back, {user?.name || 'Chandan'}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
@@ -174,12 +174,17 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="session" stroke="#4b5563" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#4b5563" fontSize={10} tickLine={false} domain={[0, 100]} />
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1f293d" vertical={false} />
+                      <XAxis dataKey="session" stroke="var(--color-gray-500)" fontSize={10} tickLine={false} />
+                      <YAxis stroke="var(--color-gray-500)" fontSize={10} tickLine={false} domain={[0, 100]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#121826', borderColor: '#1f293d', borderRadius: '8px' }}
-                        labelStyle={{ color: '#9ca3af', fontWeight: 'bold' }}
+                        contentStyle={{ 
+                          backgroundColor: 'var(--color-surface)', 
+                          borderColor: 'var(--color-border)', 
+                          borderRadius: '8px' 
+                        }}
+                        labelStyle={{ color: 'var(--color-gray-400)', fontWeight: 'bold' }}
+                        itemStyle={{ color: 'var(--color-gray-50)' }}
                       />
                       <Area type="monotone" dataKey="DSA" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorDsa)" name="DSA / Coding" />
                       <Area type="monotone" dataKey="SystemDesign" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorSys)" name="System Design" />
@@ -239,7 +244,7 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-400 mt-1.5">
-                        <span>Score: <strong className="text-white">{session.finalScore}%</strong></span>
+                        <span>Score: <strong className="text-gray-100">{session.finalScore}%</strong></span>
                         <span>•</span>
                         <span>Exp: {session.experienceYears} Years</span>
                         <span>•</span>

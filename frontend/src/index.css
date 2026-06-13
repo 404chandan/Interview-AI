@@ -29,6 +29,7 @@
   
   --scrollbar-track: rgba(226, 232, 240, 0.3);
   --scrollbar-thumb: rgba(59, 130, 246, 0.15);
+  --grid-dots: rgba(0, 0, 0, 0.05);
 }
 
 .dark {
@@ -56,6 +57,7 @@
   
   --scrollbar-track: rgba(9, 13, 22, 0.3);
   --scrollbar-thumb: rgba(59, 130, 246, 0.2);
+  --grid-dots: rgba(255, 255, 255, 0.03);
 }
 
 /* Base body initialization to force dark class as default if not specified */

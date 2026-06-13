@@ -163,7 +163,7 @@ export default function ResumeSetup({ onStartInterview }) {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
       <div className="glass-panel rounded-xl p-8 shadow-xl">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent mb-2">
+        <h1 className="text-2xl font-bold text-gray-50 mb-2">
           Setup Your Interview Profile
         </h1>
         <p className="text-gray-400 text-sm mb-6">

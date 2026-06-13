@@ -447,12 +447,14 @@ export const reviewDSASelection = async (questionText, code, language) => {
     
     Evaluate correctness, time complexity, space complexity, and provide detailed code review suggestions (code quality, edge cases, naming).
     
+    IMPORTANT: The "aiFeedback" field must be clean, human-readable plain text. Do NOT use markdown symbols like #, ##, **, *, \`, or --- in the feedback string. Write in natural paragraph form.
+    
     Output strictly as a JSON object:
     {
       "correctnessScore": 95,
       "timeComplexity": "O(N)",
       "spaceComplexity": "O(1)",
-      "aiFeedback": "Detailed review and optimization guidelines"
+      "aiFeedback": "Detailed review and optimization guidelines in plain text"
     }
   `;
 
@@ -592,9 +594,11 @@ export const compileFinalReport = async (interviewData, questionsAndAnswers) => 
     Decide the Hiring Status (Strong Hire, Hire, Lean Hire, No Hire).
     Provide summary statements, list of strong areas, weak areas, and estimated readiness percentage for Google, Amazon, Meta, and Microsoft.
     
+    IMPORTANT: All text strings in the JSON must be clean, human-readable plain text. Do NOT use markdown formatting symbols like #, ##, **, *, \`, or --- in any text field. Write naturally.
+    
     Output strictly as a JSON object:
     {
-      "candidateSummary": "concise profile summary",
+      "candidateSummary": "concise profile summary in plain text",
       "strongAreas": ["area1", "area2"],
       "weakAreas": ["area1", "area2"],
       "estimatedReadiness": {
