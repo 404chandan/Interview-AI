@@ -369,7 +369,7 @@ export default function CodingSandbox({
 
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors"
+            className="flex items-center gap-1 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Reset
@@ -401,7 +401,7 @@ export default function CodingSandbox({
           <button
             onClick={handleRun}
             disabled={running || submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-300 hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-300 hover:text-gray-900 dark:hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
           >
             <Play className="w-3.5 h-3.5" />
             Run Code

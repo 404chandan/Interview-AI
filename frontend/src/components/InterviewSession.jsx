@@ -750,21 +750,21 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             {/* Media Controls */}
             <button 
               onClick={() => setCameraOn(!cameraOn)} 
-              className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
             >
               {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
             </button>
             
             <button 
               onClick={handleMicToggle} 
-              className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
             >
               {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </button>
 
             <button 
               onClick={() => setSpeechVolume(!speechVolume)} 
-              className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
             >
               {speechVolume ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -984,7 +984,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
                         inputMode === 'voice' 
                           ? 'border-brandBlue bg-brandBlue/10 text-brandBlue' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'
+                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
                       Oral / Voice
@@ -1003,7 +1003,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
                         inputMode === 'typing' 
                           ? 'border-brandPurple bg-brandPurple/10 text-brandPurple' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-white'
+                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
                       Keyboard / Typing
@@ -1059,7 +1059,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                     type="button"
                     onClick={handleSkipQuestion}
                     disabled={isThinking || submittingAnswer}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Ask different question

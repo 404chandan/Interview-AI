@@ -120,7 +120,7 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => onNavigate('sandbox')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-darkBorder bg-darkSurface text-gray-300 hover:text-white hover:border-gray-600 transition-colors text-sm font-semibold"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-darkBorder bg-darkSurface text-gray-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-600 transition-colors text-sm font-semibold"
           >
             <Code className="w-4 h-4 text-brandBlue" />
             LeetCode Sandbox
