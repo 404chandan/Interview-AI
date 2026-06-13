@@ -54,10 +54,10 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
   const [analytics, setAnalytics] = useState({
     totalSessions: 0,
     averageScore: 0,
-    dsaTrend: [60, 65, 70, 78, 85],
-    sysDesignTrend: [45, 52, 58, 65, 75],
-    commTrend: [70, 74, 80, 82, 88],
-    readyEstimates: { google: 72, amazon: 81, meta: 76, microsoft: 84 }
+    dsaTrend: [],
+    sysDesignTrend: [],
+    commTrend: [],
+    readyEstimates: { google: 0, amazon: 0, meta: 0, microsoft: 0 }
   });
   
   const [history, setHistory] = useState([]);

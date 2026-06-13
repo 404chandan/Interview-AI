@@ -76,16 +76,18 @@ const DSA_TEST_CASES = {
 /**
  * Execute JS code safely using vm module
  */
-const executeJS = async (code, questionId, functionName = "solution") => {
+const executeJS = async (code, questionId, functionName = "solution", customCases = null) => {
   const qId = questionId?.toLowerCase() || "two-sum";
-  const testSuite = DSA_TEST_CASES[qId] || {
-    cases: [
-      { input: [5, 3], expected: 8 },
-      { input: [10, 20], expected: 30 },
-      { input: [100, -50], expected: 50 }
-    ],
-    name: "Dynamic Question"
-  };
+  const testSuite = (customCases && customCases.length > 0)
+    ? { cases: customCases, name: "Dynamic Question" }
+    : (DSA_TEST_CASES[qId] || {
+        cases: [
+          { input: [5, 3], expected: 8 },
+          { input: [10, 20], expected: 30 },
+          { input: [100, -50], expected: 50 }
+        ],
+        name: "Dynamic Question"
+      });
 
   let passed = 0;
   const results = [];
@@ -167,16 +169,18 @@ const executeJS = async (code, questionId, functionName = "solution") => {
 /**
  * Execute Python code via local CLI
  */
-const executePython = async (code, questionId, functionName = "solution") => {
+const executePython = async (code, questionId, functionName = "solution", customCases = null) => {
   const qId = questionId?.toLowerCase() || "two-sum";
-  const testSuite = DSA_TEST_CASES[qId] || {
-    cases: [
-      { input: [5, 3], expected: 8 },
-      { input: [10, 20], expected: 30 },
-      { input: [100, -50], expected: 50 }
-    ],
-    name: "Dynamic Question"
-  };
+  const testSuite = (customCases && customCases.length > 0)
+    ? { cases: customCases, name: "Dynamic Question" }
+    : (DSA_TEST_CASES[qId] || {
+        cases: [
+          { input: [5, 3], expected: 8 },
+          { input: [10, 20], expected: 30 },
+          { input: [100, -50], expected: 50 }
+        ],
+        name: "Dynamic Question"
+      });
 
   // For Python execution, if Python isn't installed locally or sandbox configuration fails, 
   // we fall back to a mock evaluation or run validation using JavaScript equivalency.
@@ -216,24 +220,26 @@ const executePython = async (code, questionId, functionName = "solution") => {
   };
 };
 
-export const executeCode = async (code, language, questionId, functionName) => {
+export const executeCode = async (code, language, questionId, functionName, customCases = null) => {
   const lang = language.toLowerCase();
   
   if (lang === 'javascript' || lang === 'typescript') {
-    return await executeJS(code, questionId, functionName);
+    return await executeJS(code, questionId, functionName, customCases);
   } else if (lang === 'python') {
-    return await executePython(code, questionId, functionName);
+    return await executePython(code, questionId, functionName, customCases);
   } else {
     // Other languages (C++, Java, Go, etc.) are evaluated by checking structure and simulating execution.
     const runtimeMs = Math.round(Math.random() * 15) + 8;
-    const testSuite = DSA_TEST_CASES[questionId?.toLowerCase()] || {
-      cases: [
-        { input: [5, 3], expected: 8 },
-        { input: [10, 20], expected: 30 },
-        { input: [100, -50], expected: 50 }
-      ],
-      name: "Dynamic Question"
-    };
+    const testSuite = (customCases && customCases.length > 0)
+      ? { cases: customCases, name: "Dynamic Question" }
+      : (DSA_TEST_CASES[questionId?.toLowerCase()] || {
+          cases: [
+            { input: [5, 3], expected: 8 },
+            { input: [10, 20], expected: 30 },
+            { input: [100, -50], expected: 50 }
+          ],
+          name: "Dynamic Question"
+        });
     const totalCases = testSuite.cases.length;
     const passedCases = code.trim().length > 30 ? totalCases : 0; // Simple length check for stub implementations
     

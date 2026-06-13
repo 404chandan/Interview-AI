@@ -355,6 +355,7 @@ router.post('/interview/:id/question', async (req, res) => {
         codeTemplate: questionObj.codeTemplate || null,
         dsaSlug: questionObj.id || questionObj.dsaSlug || null,
         functionName: questionObj.functionName || null,
+        testCases: questionObj.testCases || [],
         difficulty: questionObj.difficulty || 'medium',
         topics: questionObj.topics || [],
         expectedAnswer: questionObj.expectedAnswer || '',
@@ -370,6 +371,7 @@ router.post('/interview/:id/question', async (req, res) => {
         codeTemplate: questionObj.codeTemplate || null,
         dsaSlug: questionObj.id || questionObj.dsaSlug || null,
         functionName: questionObj.functionName || null,
+        testCases: questionObj.testCases || [],
         difficulty: questionObj.difficulty || 'medium',
         topics: questionObj.topics || [],
         expectedAnswer: questionObj.expectedAnswer || '',
@@ -462,7 +464,7 @@ router.post('/interview/:id/code', async (req, res) => {
     }
 
     // 1. Run local sandboxed tests
-    const executionResults = await executeCode(code, language, dsaSlug, functionName || (activeQuestion && activeQuestion.functionName) || 'solution');
+    const executionResults = await executeCode(code, language, dsaSlug, functionName || (activeQuestion && activeQuestion.functionName) || 'solution', activeQuestion && activeQuestion.testCases);
 
     // 2. Perform AI review of code
     const aiReview = await reviewDSASelection(questionText, code, language);
@@ -697,6 +699,13 @@ router.post('/interview/:id/finish', async (req, res) => {
       inMemoryDb.reports.push(savedReport);
     }
 
+    // Purge raw question records to retain only the report summary and scores
+    if (mongoose.connection.readyState === 1) {
+      await Question.deleteMany({ interviewId });
+    } else {
+      inMemoryDb.questions = inMemoryDb.questions.filter(q => q.interviewId !== interviewId);
+    }
+
     res.json({ success: true, report: savedReport, interview });
   } catch (err) {
     console.error("Finish Interview Error:", err);
@@ -832,15 +841,22 @@ router.get('/analytics', async (req, res) => {
     }
 
     // Default trend data
-    let dsaTrend = [60, 68, 75, 82, 90];
-    let sysDesignTrend = [45, 50, 60, 70, 78];
-    let commTrend = [75, 78, 80, 84, 86];
+    let dsaTrend = [];
+    let sysDesignTrend = [];
+    let commTrend = [];
+    let readyEstimates = { google: 0, amazon: 0, meta: 0, microsoft: 0 };
     
     if (list.length > 0) {
       // Map existing scores to trends if available
       dsaTrend = list.map(i => i.scores.dsa || 0).reverse();
       sysDesignTrend = list.map(i => i.scores.systemDesign || 0).reverse();
       commTrend = list.map(i => i.cameraAnalysis.eyeContactScore || 0).reverse();
+      readyEstimates = {
+        google: Math.max(0, Math.round(Math.max(...list.map(i => i.finalScore)) - 5)),
+        amazon: Math.max(0, Math.round(Math.max(...list.map(i => i.finalScore)) + 2)),
+        meta: Math.max(0, Math.round(Math.max(...list.map(i => i.finalScore)) - 2)),
+        microsoft: Math.max(0, Math.round(Math.max(...list.map(i => i.finalScore)) + 5))
+      };
     }
 
     res.json({
@@ -849,12 +865,7 @@ router.get('/analytics', async (req, res) => {
       dsaTrend,
       sysDesignTrend,
       commTrend,
-      readyEstimates: {
-        google: list.length > 0 ? Math.max(...list.map(i => i.finalScore)) - 5 : 72,
-        amazon: list.length > 0 ? Math.max(...list.map(i => i.finalScore)) + 2 : 81,
-        meta: list.length > 0 ? Math.max(...list.map(i => i.finalScore)) - 2 : 76,
-        microsoft: list.length > 0 ? Math.max(...list.map(i => i.finalScore)) + 5 : 84
-      }
+      readyEstimates
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

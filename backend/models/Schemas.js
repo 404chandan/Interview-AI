@@ -43,6 +43,7 @@ const QuestionSchema = new mongoose.Schema({
   codeTemplate: String, // For DSA questions
   dsaSlug: String, // Slug to map to test runner cases (e.g. 'two-sum')
   functionName: String, // Name of the function to invoke for evaluation
+  testCases: [mongoose.Schema.Types.Mixed], // Custom test cases for dynamically generated DSA questions
   difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
   topics: [String],
   expectedAnswer: String,
