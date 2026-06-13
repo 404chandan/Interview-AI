@@ -6,13 +6,24 @@ import ResumeSetup from './components/ResumeSetup';
 import InterviewSession from './components/InterviewSession';
 import ReportView from './components/ReportView';
 import LeetCodeGenerator from './components/LeetCodeGenerator';
-import { Layers, Code, Play, LogIn, LogOut, User } from 'lucide-react';
+import { Layers, Code, Play, LogIn, LogOut, User, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState('landing'); // 'landing', 'login', 'dashboard', 'setup', 'interview', 'report', 'sandbox'
   const [user, setUser] = useState(null);
   const [interviewId, setInterviewId] = useState(null);
   const [sessionData, setSessionData] = useState({ interview: null, resume: null });
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   // Auto-login and fetch interceptor
   useEffect(() => {
@@ -93,6 +104,15 @@ export default function App() {
 
         {/* Navigation / Header Actions */}
         <nav className="flex items-center gap-6 text-xs font-semibold text-gray-400">
+          <button
+            type="button"
+            onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-lg border border-darkBorder hover:border-gray-500 text-gray-400 hover:text-white transition-all flex items-center justify-center"
+            title="Toggle Light/Dark Theme"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-brandBlue" />}
+          </button>
+
           {user ? (
             <>
               <button 

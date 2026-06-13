@@ -7,14 +7,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        darkBg: '#090d16',
-        darkSurface: '#121826',
-        darkBorder: '#1f293d',
-        glassBg: 'rgba(18, 24, 38, 0.7)',
-        glassBorder: 'rgba(255, 255, 255, 0.08)',
+        darkBg: 'var(--color-bg)',
+        darkSurface: 'var(--color-surface)',
+        darkBorder: 'var(--color-border)',
+        glassBg: 'var(--color-glass-bg)',
+        glassBorder: 'var(--color-glass-border)',
         brandBlue: '#3b82f6',
         brandPurple: '#8b5cf6',
-        brandAccent: '#10b981'
+        brandAccent: '#10b981',
+        gray: {
+          50: 'var(--color-gray-50)',
+          100: 'var(--color-gray-100)',
+          200: 'var(--color-gray-100)',
+          300: 'var(--color-gray-300)',
+          400: 'var(--color-gray-400)',
+          500: 'var(--color-gray-500)',
+          600: 'var(--color-gray-600)',
+          700: 'var(--color-gray-700)',
+          800: 'var(--color-gray-800)',
+          900: 'var(--color-gray-900)'
+        }
       },
       animation: {
         'avatar-talk': 'talk 0.35s infinite alternate ease-in-out',

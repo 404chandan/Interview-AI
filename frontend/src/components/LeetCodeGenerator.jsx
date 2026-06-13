@@ -35,17 +35,62 @@ export default function LeetCodeGenerator() {
       setQuestion(data);
     } catch (err) {
       console.warn("Offline fallback for LeetCode question generation.");
-      // Simulated question object
-      setTimeout(() => {
-        setQuestion({
-          id: 'mock-dynamic-' + Date.now(),
-          questionText: `Design a function to find the longest substring in a string 's' that contains at most 2 distinct characters.\n\nInput: s = "eceba"\nOutput: 3\nExplanation: The substring is "ece" with length 3.\n\nConstraints:\n- 1 <= s.length <= 10^5\n- s consists of English letters.`,
-          codeTemplate: `function lengthOfLongestSubstringTwoDistinct(s) {\n    // Write your code here\n};`,
+      
+      const cleanTopic = topic || 'Arrays';
+      const cleanCompany = company || 'General';
+      const lowercaseTopic = cleanTopic.toLowerCase();
+      
+      let mockQ;
+      if (lowercaseTopic.includes('tree') || lowercaseTopic.includes('bst')) {
+        mockQ = {
+          id: 'mock-tree-' + Date.now(),
+          questionText: `[${cleanCompany} Practice Challenge] Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: root = [3,9,20,null,null,15,7]\nOutput: 3\n\`\`\`\n\nConstraints:\n- The number of nodes in the tree is in the range [0, 10^4].`,
+          codeTemplate: `function maxDepth(root) {\n    // Write your code here\n};`,
           difficulty: difficulty,
-          topics: [topic, 'Hash Map'],
-          functionName: 'lengthOfLongestSubstringTwoDistinct'
-        });
-      }, 800);
+          topics: [cleanTopic, 'DFS'],
+          functionName: 'maxDepth'
+        };
+      } else if (lowercaseTopic.includes('graph') || lowercaseTopic.includes('bfs') || lowercaseTopic.includes('dfs')) {
+        mockQ = {
+          id: 'mock-graph-' + Date.now(),
+          questionText: `[${cleanCompany} Practice Challenge] There are a total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai. Return true if you can finish all courses. Otherwise, return false.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: numCourses = 2, prerequisites = [[1,0]]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= numCourses <= 2000`,
+          codeTemplate: `function canFinish(numCourses, prerequisites) {\n    // Write your code here\n};`,
+          difficulty: difficulty,
+          topics: [cleanTopic, 'BFS', 'Topological Sort'],
+          functionName: 'canFinish'
+        };
+      } else if (lowercaseTopic.includes('matrix') || lowercaseTopic.includes('grid')) {
+        mockQ = {
+          id: 'mock-matrix-' + Date.now(),
+          questionText: `[${cleanCompany} Practice Challenge] Given an m x n 2D binary grid grid which represents a map of '1's (land) and '0's (water), return the number of islands.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]\nOutput: 1\n\`\`\``,
+          codeTemplate: `function numIslands(grid) {\n    // Write your code here\n};`,
+          difficulty: difficulty,
+          topics: [cleanTopic, 'DFS', 'Matrix'],
+          functionName: 'numIslands'
+        };
+      } else if (lowercaseTopic.includes('stack') || lowercaseTopic.includes('queue') || lowercaseTopic.includes('parentheses')) {
+        mockQ = {
+          id: 'mock-stack-' + Date.now(),
+          questionText: `[${cleanCompany} Practice Challenge] Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\nAn input string is valid if open brackets are closed by the same type of brackets in the correct order.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: s = "()"\nOutput: true\n\`\`\``,
+          codeTemplate: `function isValid(s) {\n    // Write your code here\n};`,
+          difficulty: difficulty,
+          topics: [cleanTopic, 'Stack'],
+          functionName: 'isValid'
+        };
+      } else {
+        mockQ = {
+          id: 'mock-array-' + Date.now(),
+          questionText: `[${cleanCompany} Practice Challenge] Given an array of integers nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\``,
+          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
+          difficulty: difficulty,
+          topics: [cleanTopic, 'Hash Set'],
+          functionName: 'containsDuplicate'
+        };
+      }
+
+      setTimeout(() => {
+        setQuestion(mockQ);
+      }, 500);
     } finally {
       setGenerating(false);
     }
