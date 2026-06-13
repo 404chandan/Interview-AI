@@ -15,6 +15,7 @@ export default function Whiteboard({
   const [draggedNode, setDraggedNode] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [connectionStart, setConnectionStart] = useState(null);
+  const [previewLine, setPreviewLine] = useState(null);
   const canvasRef = useRef(null);
 
   // Predefined components types
@@ -45,24 +46,34 @@ export default function Whiteboard({
 
   // Node Drag Handlers
   const handleMouseDown = (node, e) => {
+    e.preventDefault();
     e.stopPropagation();
+
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    const nodeCenter = {
+      x: node.x + node.width / 2,
+      y: node.y + node.height / 2
+    };
+
     if (e.shiftKey) {
-      // Shift + click starts connection
+      // Shift + click starts a connection line from this node
       setConnectionStart(node.id);
-    } else {
-      setDraggedNode(node.id);
-      const rect = e.currentTarget.getBoundingClientRect();
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      setDragOffset({
-        x: (e.clientX - rect.left),
-        y: (e.clientY - rect.top)
-      });
+      setPreviewLine(nodeCenter);
+      return;
     }
+
+    setDraggedNode(node.id);
+    setDragOffset({
+      x: e.clientX - (canvasRect?.left ?? 0) - node.x,
+      y: e.clientY - (canvasRect?.top ?? 0) - node.y
+    });
   };
 
   const handleMouseMove = (e) => {
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    if (!canvasRect) return;
+
     if (draggedNode) {
-      const canvasRect = canvasRef.current.getBoundingClientRect();
       const newX = e.clientX - canvasRect.left - dragOffset.x;
       const newY = e.clientY - canvasRect.top - dragOffset.y;
       
@@ -71,6 +82,14 @@ export default function Whiteboard({
           ? { ...n, x: Math.max(10, Math.min(newX, canvasRect.width - n.width)), y: Math.max(10, Math.min(newY, canvasRect.height - n.height)) } 
           : n
       ));
+      return;
+    }
+
+    if (connectionStart) {
+      setPreviewLine({
+        x: e.clientX - canvasRect.left,
+        y: e.clientY - canvasRect.top
+      });
     }
   };
 
@@ -78,19 +97,19 @@ export default function Whiteboard({
     if (draggedNode) {
       setDraggedNode(null);
     }
+
     if (connectionStart && nodeId && nodeId !== connectionStart) {
-      // Connect nodes
       const isAlreadyConnected = connections.some(c => 
         (c.from === connectionStart && c.to === nodeId) || 
         (c.from === nodeId && c.to === connectionStart)
       );
       if (!isAlreadyConnected) {
-        setConnections([...connections, { id: 'conn-' + Date.now(), from: connectionStart, to: nodeId }]);
+        setConnections(prev => [...prev, { id: 'conn-' + Date.now(), from: connectionStart, to: nodeId }]);
       }
-      setConnectionStart(null);
-    } else {
-      setConnectionStart(null);
     }
+
+    setConnectionStart(null);
+    setPreviewLine(null);
   };
 
   const clearCanvas = () => {
@@ -226,6 +245,11 @@ export default function Whiteboard({
           ref={canvasRef}
           onMouseMove={handleMouseMove}
           onMouseUp={() => handleMouseUp()}
+          onMouseLeave={() => {
+            setDraggedNode(null);
+            setConnectionStart(null);
+            setPreviewLine(null);
+          }}
           className="flex-1 bg-darkBg/30 relative cursor-default overflow-hidden"
           style={{ backgroundImage: 'radial-gradient(var(--grid-dots) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
         >
@@ -242,7 +266,6 @@ export default function Whiteboard({
               const toNode = findNode(c.to);
               if (!fromNode || !toNode) return null;
               
-              // Calculate center points
               const x1 = fromNode.x + fromNode.width / 2;
               const y1 = fromNode.y + fromNode.height / 2;
               const x2 = toNode.x + toNode.width / 2;
@@ -263,6 +286,22 @@ export default function Whiteboard({
                 </g>
               );
             })}
+
+            {connectionStart && previewLine && (() => {
+              const fromNode = findNode(connectionStart);
+              if (!fromNode) return null;
+              const x1 = fromNode.x + fromNode.width / 2;
+              const y1 = fromNode.y + fromNode.height / 2;
+              const x2 = previewLine.x;
+              const y2 = previewLine.y;
+
+              return (
+                <g>
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#3b82f6" strokeWidth="2" strokeDasharray="6 4" opacity="0.75" />
+                  <circle cx={x1} cy={y1} r="4" fill="#3b82f6" opacity="0.9" />
+                </g>
+              );
+            })()}
           </svg>
 
           {/* Render draggable Nodes */}

@@ -13,7 +13,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [interviewId, setInterviewId] = useState(null);
   const [sessionData, setSessionData] = useState({ interview: null, resume: null });
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored) return stored;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;

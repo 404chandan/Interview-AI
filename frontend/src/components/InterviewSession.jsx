@@ -39,11 +39,20 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [timeLeft, setTimeLeft] = useState(300);
   const [showProceedButton, setShowProceedButton] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
+  const cameraStreamRef = useRef(null);
 
   const mainVideoRef = useRef(null);
   const pipVideoRef = useRef(null);
   const sidebarVideoRef = useRef(null);
   const persistentVideoRef = useRef(null);
+
+  const stopCameraStream = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+      setWebcamStream(null);
+    }
+  };
 
   // Timer Effect
   useEffect(() => {
@@ -160,25 +169,42 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
 
   // 2. Initialize Camera Feed
   useEffect(() => {
-    if (cameraOn) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((stream) => {
-          setWebcamStream(stream);
-        })
-        .catch((err) => {
-          console.warn("Camera access denied or missing hardware:", err.message);
-          setCameraOn(false);
+    let isMounted = true;
+    const initCamera = async () => {
+      if (!cameraOn || cameraStreamRef.current) return;
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: false
         });
+
+        if (!isMounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+        setWebcamStream(stream);
+      } catch (err) {
+        console.warn("Camera access denied or missing hardware:", err.message);
+        setCameraOn(false);
+      }
+    };
+
+    if (cameraOn) {
+      initCamera();
     } else {
-      if (webcamStream) {
-        webcamStream.getTracks().forEach(track => track.stop());
-        setWebcamStream(null);
-      }
+      stopCameraStream();
     }
+
     return () => {
-      if (webcamStream) {
-        webcamStream.getTracks().forEach(track => track.stop());
-      }
+      isMounted = false;
+      stopCameraStream();
     };
   }, [cameraOn]);
 
@@ -747,14 +773,14 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       </div>
 
       {/* Main Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch h-[640px] max-h-[calc(100vh-190px)] min-h-[580px] select-none">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-stretch h-auto lg:h-[640px] max-h-[calc(100vh-190px)] min-h-[500px] select-none">
         
         {/* Left Side: Avatar Panel & Webcam & Telemetry (Only for non-verbal rounds when not showing proceed) */}
         {!showProceedButton && !(currentRound === 1 || currentRound === 4) && (
           <div className="lg:col-span-1 flex flex-col gap-4 h-full">
             
             {/* AI Avatar Display */}
-            <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center h-[260px] relative shrink-0">
+            <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center h-[220px] sm:h-[260px] relative shrink-0">
               <InterviewerAvatar isTalking={isTalking} isThinking={isThinking} avatarType={interviewData?.interviewerAvatar || 'Sarah'} />
             </div>
 
@@ -843,7 +869,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             <div className="flex-1 flex flex-col justify-between p-6 h-full min-h-0 overflow-y-auto">
               
               {/* Active-Speaker Video Call Stage */}
-              <div className="relative w-full h-[360px] bg-black rounded-xl overflow-hidden border border-darkBorder flex items-center justify-center shrink-0 mb-6">
+              <div className="relative w-full h-[260px] sm:h-[320px] lg:h-[360px] bg-black rounded-xl overflow-hidden border border-darkBorder flex items-center justify-center shrink-0 mb-6">
 
                 {/* Persistent camera video element — never unmounted */}
                 {cameraOn && (

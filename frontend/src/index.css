@@ -62,7 +62,13 @@
 
 /* Base body initialization to force dark class as default if not specified */
 html {
+  color-scheme: light dark;
   background-color: var(--color-bg);
+}
+
+body {
+  min-height: 100vh;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 @layer base {
