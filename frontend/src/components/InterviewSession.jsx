@@ -122,6 +122,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const socketRef = useRef(null);
   const recognitionRef = useRef(null);
   const synthRef = useRef(window.speechSynthesis);
+  const sessionFillersCountRef = useRef(0);
 
   const interviewId = interviewData?._id || 'mock-interview';
   const roleName = resumeData?.role || 'Backend Engineer';
@@ -202,39 +203,38 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       rec.lang = 'en-US';
       rec.maxAlternatives = 1;
 
+      rec.onstart = () => {
+        sessionFillersCountRef.current = 0;
+      };
+
       rec.onresult = (event) => {
-        let chunk = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        let finalTranscript = '';
+        for (let i = 0; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            chunk += event.results[i][0].transcript;
+            finalTranscript += event.results[i][0].transcript + ' ';
           }
         }
         
-        if (chunk.trim()) {
-          setTranscript(prev => {
-            const cleanPrev = prev.trim();
-            const cleanChunk = chunk.trim();
-            // Check to prevent duplicate segments
-            if (cleanPrev.toLowerCase().includes(cleanChunk.toLowerCase())) {
-              return prev;
-            }
-            return cleanPrev ? `${cleanPrev} ${cleanChunk}` : cleanChunk;
-          });
+        const cleanTranscript = finalTranscript.trim();
+        if (cleanTranscript) {
+          setTranscript(cleanTranscript);
 
-          // Scan for filler words in final transcript chunk
+          // Scan for filler words in the entire accumulated transcript of this session
           const fillerList = ['umm', 'like', 'basically', 'actually', 'uh', 'um'];
           let fillersFound = 0;
           fillerList.forEach(word => {
             const regex = new RegExp(`\\b${word}\\b`, 'gi');
-            const matches = chunk.match(regex);
+            const matches = cleanTranscript.match(regex);
             if (matches) fillersFound += matches.length;
           });
           
-          if (fillersFound > 0) {
+          const newFillers = fillersFound - sessionFillersCountRef.current;
+          if (newFillers > 0) {
             setCameraMetrics(prev => ({
               ...prev,
-              fillerWordsCount: prev.fillerWordsCount + fillersFound
+              fillerWordsCount: prev.fillerWordsCount + newFillers
             }));
+            sessionFillersCountRef.current = fillersFound;
           }
         }
       };
@@ -250,9 +250,25 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         }
       };
 
-      rec.onerror = (e) => console.error("Speech Recognition Error: ", e);
+      rec.onerror = (e) => {
+        console.warn("Speech Recognition Error: ", e.error);
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          micOnRef.current = false;
+          setMicOn(false);
+        }
+      };
+
       recognitionRef.current = rec;
     }
+
+    return () => {
+      if (recognitionRef.current) {
+        micOnRef.current = false;
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    };
   }, []);
 
   // 4. Trigger Speech Synthesis (TTS)
@@ -383,7 +399,14 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     setSubmittingAnswer(true);
     setTranscript(''); // Clear immediately so it is ready for continuous dictation
 
-    // Do NOT stop the mic here! Keep it active (latent mic)
+    // Stop recognition to clear event.results session state for the next question
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn("Error stopping recognition on answer submission:", e);
+      }
+    }
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/interview/${interviewId}/answer`, {
@@ -535,13 +558,19 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     setRoundStep(0);
     const nextRound = currentRound + 1;
     
-    // If next round is not verbal, stop mic
-    if (nextRound === 2 || nextRound === 3) {
-      if (micOn && recognitionRef.current) {
+    // Stop recognition to clear session state
+    if (recognitionRef.current) {
+      if (nextRound === 2 || nextRound === 3) {
+        micOnRef.current = false;
         try {
           recognitionRef.current.stop();
         } catch (e) {}
         setMicOn(false);
+      } else {
+        // Verbal round: restart it
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
       }
     }
     
@@ -557,6 +586,14 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const handleFinishInterview = async () => {
     setFinished(true);
     setIsThinking(true);
+    
+    if (recognitionRef.current) {
+      micOnRef.current = false;
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      setMicOn(false);
+    }
     
     try {
       const res = await fetch(`${BACKEND_URL}/api/interview/${interviewId}/finish`, {
@@ -681,7 +718,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                     autoPlay 
                     muted 
                     playsInline
-                    className="w-full h-full object-cover transform scale-x-[-1]"
+                    className="w-full h-full object-contain transform scale-x-[-1] bg-black"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
@@ -773,7 +810,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                           autoPlay
                           muted
                           playsInline
-                          className="w-full h-full object-cover transform scale-x-[-1]"
+                          className="w-full h-full object-contain transform scale-x-[-1] bg-black"
                         />
                         <div className="absolute bottom-1 left-1 bg-black/60 text-[8px] font-semibold text-white px-1 py-0.5 rounded">
                           You (Candidate)
@@ -790,7 +827,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                         autoPlay
                         muted
                         playsInline
-                        className="w-full h-full object-cover transform scale-x-[-1]"
+                        className="w-full h-full object-contain transform scale-x-[-1] bg-black"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
@@ -860,7 +897,10 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                         setInputMode('voice');
                         if (!micOn && recognitionRef.current) {
                           setTranscript('');
-                          recognitionRef.current.start();
+                          micOnRef.current = true;
+                          try {
+                            recognitionRef.current.start();
+                          } catch (e) {}
                           setMicOn(true);
                         }
                       }}
@@ -875,6 +915,13 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                     <button
                       onClick={() => {
                         setInputMode('typing');
+                        if (micOn && recognitionRef.current) {
+                          micOnRef.current = false;
+                          try {
+                            recognitionRef.current.stop();
+                          } catch (e) {}
+                          setMicOn(false);
+                        }
                       }}
                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
                         inputMode === 'typing' 
