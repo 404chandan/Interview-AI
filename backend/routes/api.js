@@ -271,32 +271,38 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
  */
 router.post('/interview/start', async (req, res) => {
   try {
-    const { role, experienceYears, resumeId, targetCompany, roundTimes } = req.body;
+    const { role, experienceYears, resumeId, targetCompany, roundTimes, isTopicWise, topicName, difficulty } = req.body;
     const userId = await getUserId(req);
 
     let interview;
     if (mongoose.connection.readyState === 1) {
       interview = await Interview.create({
         userId,
-        role,
+        role: isTopicWise ? topicName : role,
         experienceYears: Number(experienceYears),
         resumeId: mongoose.Types.ObjectId.isValid(resumeId) ? resumeId : null,
         status: 'ongoing',
         currentRound: 1,
         targetCompany: targetCompany || 'Google',
-        roundTimes: roundTimes || { 1: 30, 2: 45, 3: 15, 4: 10 }
+        roundTimes: roundTimes || { 1: 30, 2: 45, 3: 15, 4: 10 },
+        isTopicWise: !!isTopicWise,
+        topicName,
+        difficulty: difficulty || 'medium'
       });
     } else {
       interview = {
         _id: 'mock-interview-' + Date.now(),
         userId,
-        role,
+        role: isTopicWise ? topicName : role,
         experienceYears: Number(experienceYears),
         resumeId,
         status: 'ongoing',
         currentRound: 1,
         targetCompany: targetCompany || 'Google',
         roundTimes: roundTimes || { 1: 30, 2: 45, 3: 15, 4: 10 },
+        isTopicWise: !!isTopicWise,
+        topicName,
+        difficulty: difficulty || 'medium',
         scores: { resume: 0, projects: 0, technical: 0, dsa: 0, systemDesign: 0, behavioral: 0 },
         finalScore: 0,
         hiringDecision: 'Pending',
@@ -368,9 +374,11 @@ router.post('/interview/:id/question', async (req, res) => {
     } else {
       interviewObj = inMemoryDb.interviews.find(i => i._id === interviewId);
     }
+    const isTopicWise = interviewObj?.isTopicWise || false;
+    const topicName = interviewObj?.topicName || '';
+    const difficulty = interviewObj?.difficulty || 'medium';
     const targetCompany = interviewObj?.targetCompany || 'Google';
 
-    // Fetch question history for this interview
     let history = [];
     if (mongoose.connection.readyState === 1) {
       history = await Question.find({ interviewId });
@@ -378,7 +386,14 @@ router.post('/interview/:id/question', async (req, res) => {
       history = inMemoryDb.questions.filter(q => q.interviewId === interviewId);
     }
 
-    const questionObj = await generateQuestion(round, resumeData, history, targetCompany);
+    const questionObj = await generateQuestion(
+      isTopicWise ? 'topic_wise' : round,
+      resumeData,
+      history,
+      targetCompany,
+      topicName,
+      difficulty
+    );
     
     let savedQuestion;
     if (mongoose.connection.readyState === 1) {

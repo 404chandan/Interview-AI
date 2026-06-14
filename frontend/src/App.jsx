@@ -3,10 +3,11 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import ResumeSetup from './components/ResumeSetup';
+import TopicSetup from './components/TopicSetup';
 import InterviewSession from './components/InterviewSession';
 import ReportView from './components/ReportView';
 import LeetCodeGenerator from './components/LeetCodeGenerator';
-import { Layers, Code, Play, LogIn, LogOut, User, Sun, Moon } from 'lucide-react';
+import { Layers, Code, Play, BookOpen, LogIn, LogOut, User, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState('landing'); // 'landing', 'login', 'dashboard', 'setup', 'interview', 'report', 'sandbox'
@@ -139,6 +140,14 @@ export default function App() {
               </button>
 
               <button 
+                onClick={() => setView('topic-setup')}
+                className={`hover:text-gray-100 transition-colors flex items-center gap-1.5 ${view === 'topic-setup' ? 'text-brandPurple font-brand' : ''}`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Topic Interview</span>
+              </button>
+
+              <button 
                 onClick={() => setView('setup')}
                 className={`px-3 py-1.5 rounded-lg bg-brandBlue/15 hover:bg-brandBlue text-brandBlue hover:text-white border border-brandBlue/30 hover:border-transparent transition-all`}
               >
@@ -204,6 +213,12 @@ export default function App() {
         
         {view === 'setup' && (
           <ResumeSetup 
+            onStartInterview={handleStartInterview} 
+          />
+        )}
+        
+        {view === 'topic-setup' && (
+          <TopicSetup 
             onStartInterview={handleStartInterview} 
           />
         )}

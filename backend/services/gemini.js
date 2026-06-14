@@ -87,13 +87,43 @@ export const parseResumeText = async (text, role, experienceYears) => {
 /**
  * Dynamically generates a question based on current round and session context
  */
-export const generateMockQuestion = (round, resumeData, history = [], targetCompany = 'Google') => {
+export const generateMockQuestion = (round, resumeData, history = [], targetCompany = 'Google', topicName = '', difficulty = 'medium') => {
   const skills = resumeData?.skills || ["JavaScript", "Python"];
   const projects = resumeData?.projects || [];
   const experience = resumeData?.experience || [];
   const achievements = resumeData?.achievements || [];
   
   // Return realistic, highly versatile mock questions based on the round and history
+  if (round === 'topic_wise') {
+    const mockTopicsPool = {
+      'os': [
+        "What is the difference between a process and a thread, and how do they share memory?",
+        "Explain virtual memory and page faults. How does the operating system handle a page fault?",
+        "What is a deadlock, and what are the four necessary conditions for a deadlock to occur?",
+        "What is CPU scheduling, and how does the Round Robin algorithm work?"
+      ],
+      'system design': [
+        "What is the CAP theorem and how does it affect distributed database design?",
+        "Explain the differences between SQL and NoSQL database scaling.",
+        "What is a CDN and how does it optimize web asset delivery?"
+      ]
+    };
+    const t = (topicName || 'os').toLowerCase();
+    let questions = mockTopicsPool[t] || [
+      `Explain the core concepts and tradeoffs of ${topicName || 'this topic'} at a senior level.`,
+      `How would you optimize performance and scaling for a system implementing ${topicName || 'this topic'}?`
+    ];
+    
+    const asked = history.map(h => h.questionText);
+    const unique = questions.filter(q => !asked.includes(q));
+    const selected = unique.length > 0 ? unique[0] : questions[Math.floor(Math.random() * questions.length)];
+    return {
+      questionText: selected,
+      difficulty: 'medium',
+      topics: [topicName || 'Topic-Wise']
+    };
+  }
+
   if (round === 'resume' || round === 'rapid') {
     const techQuestions = {
       'javascript': [
@@ -340,7 +370,7 @@ function getRandomPatternForTopic(topic) {
   return null;
 }
 
-export const generateQuestion = async (round, resumeData, history = [], targetCompany = 'Google') => {
+export const generateQuestion = async (round, resumeData, history = [], targetCompany = 'Google', topicName = '', difficulty = 'medium') => {
   const role = resumeData?.role || "Software Engineer";
   const experienceYears = resumeData?.experienceYears || 2;
   const skills = resumeData?.skills || ["JavaScript", "Python"];
@@ -350,7 +380,7 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
   const technologies = resumeData?.technologies || [];
 
   if (!aiModel) {
-    return generateMockQuestion(round, resumeData, history, targetCompany);
+    return generateMockQuestion(round, resumeData, history, targetCompany, topicName, difficulty);
   }
 
   // Select a random DSA topic to avoid repeating substring questions
@@ -378,6 +408,7 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
     
     Instructions:
     - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
+    - If round is "topic_wise", generate a conceptual/technical interview question specifically for the topic "${topicName || 'Operating Systems'}", with difficulty level "${difficulty || 'medium'}", tailored for a candidate with ${experienceYears} Years of experience. Seek exactly ONE explanation, design choice, or response at a time, keeping it general, conceptual, and quick to answer.
     - If round is "resume" or "rapid", generate a basic rapid conceptual interview question related ONLY to the skills, technologies, and projects mentioned in the candidate's resume (Resume Skills: ${skills.join(', ')}, Technologies: ${technologies.join(', ')}). Seek exactly ONE explanation, conceptual definition, or response at a time, keeping it general, conceptual, quick to answer, but directly related to their resume skills. Do NOT ask questions about general topics that aren't represented on their resume.
     - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!). ${patternInstruction}
       Provide a clean function boilerplate for JavaScript in "codeTemplate".

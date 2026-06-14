@@ -64,6 +64,9 @@ const InterviewSchema = new mongoose.Schema({
   resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume' },
   targetCompany: { type: String, default: 'Google' },
   roundTimes: { type: mongoose.Schema.Types.Mixed, default: { 1: 30, 2: 45, 3: 15, 4: 10 } },
+  isTopicWise: { type: Boolean, default: false },
+  topicName: String,
+  difficulty: String,
   
   // Section Scores (0-100)
   scores: {

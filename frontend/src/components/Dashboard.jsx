@@ -126,11 +126,18 @@ export default function Dashboard({ onNavigate, setInterviewId, user }) {
             LeetCode Sandbox
           </button>
           <button
+            onClick={() => onNavigate('topic-setup')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-darkBorder bg-darkSurface text-gray-300 hover:text-gray-100 hover:border-gray-600 transition-colors text-sm font-semibold"
+          >
+            <BookOpen className="w-4 h-4 text-brandPurple" />
+            Topic-Wise Interview
+          </button>
+          <button
             onClick={() => onNavigate('setup')}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-brandBlue to-brandPurple text-white hover:opacity-90 transition-opacity text-sm font-semibold shadow-lg shadow-brandBlue/10"
           >
             <Play className="w-4 h-4 fill-current" />
-            New Mock Interview
+            Full Mock Interview
           </button>
         </div>
       </div>

@@ -458,7 +458,40 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       console.warn("Offline fallback for question retrieval.");
       
       let mockQuestion;
-      if (round === 1) {
+      if (interviewData?.isTopicWise) {
+        const topic = interviewData.topicName || 'Operating Systems';
+        const topicMockPool = {
+          'operating systems': [
+            "What is the difference between a process and a thread, and how do they share memory?",
+            "Explain virtual memory and page faults. How does the operating system handle a page fault?",
+            "What is a deadlock, and what are the four necessary conditions for a deadlock to occur?",
+            "What is CPU scheduling, and how does the Round Robin algorithm work?",
+            "Explain the difference between paging and segmentation in memory management."
+          ],
+          'database management systems (dbms)': [
+            "What is database normalization, and what are the differences between 1NF, 2NF, and 3NF?",
+            "Explain the ACID properties of database transactions.",
+            "What is the difference between a clustered and a non-clustered index?",
+            "Explain the difference between pessimistic and optimistic locking.",
+            "How does sharding differ from partitioning in database scaling?"
+          ]
+        };
+        const cleanTopic = topic.toLowerCase();
+        const pool = topicMockPool[cleanTopic] || [
+          `Explain the core concepts and design tradeoffs of ${topic} for a candidate with ${interviewData.experienceYears || 2} years of experience.`,
+          `How would you handle high-throughput scaling or optimization challenges involving ${topic}?`,
+          `What are some common pitfalls or edge cases developers run into when working with ${topic}?`,
+          `Describe a scenario where choosing the wrong architecture for ${topic} could lead to system failure.`,
+          `Compare the popular tools, engines, or design patterns used to implement ${topic} in production.`
+        ];
+        const selectedText = pool[roundStep % pool.length];
+        mockQuestion = {
+          _id: 'mock-q-topic-' + Date.now(),
+          questionText: selectedText,
+          difficulty: interviewData.difficulty || 'medium',
+          topics: [topic]
+        };
+      } else if (round === 1) {
         mockQuestion = {
           _id: 'mock-q-1-' + Date.now(),
           questionText: "Let's review your experience at Siemens DISW. You automated InsightPro workflows. Can you explain the tech layout and how Redis caching was integrated?",
@@ -578,7 +611,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       };
       setRoundEvaluations(prev => [...prev, newEval]);
 
-      const limit = currentRound === 1 ? 9 : 2; // 10 questions for Round 1 (0 to 9), 3 questions for Round 4 (0 to 2)
+      const limit = interviewData?.isTopicWise ? 4 : (currentRound === 1 ? 9 : 2); // 5 questions for topic-wise (0 to 4), 10 for Round 1 (0 to 9), 3 for Round 4 (0 to 2)
       if (roundStep < limit) {
         setRoundStep(prev => prev + 1);
         getQuestion(currentRound);
@@ -595,7 +628,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       };
       setRoundEvaluations(prev => [...prev, newEval]);
 
-      const limit = currentRound === 1 ? 9 : 2;
+      const limit = interviewData?.isTopicWise ? 4 : (currentRound === 1 ? 9 : 2);
       if (roundStep < limit) {
         setRoundStep(prev => prev + 1);
         getQuestion(currentRound);
@@ -718,31 +751,33 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         </div>
 
         {/* Progress Timeline */}
-        <div className="flex items-center justify-between w-full mb-8 px-4 text-[10px] text-gray-400 font-semibold relative">
-          <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-darkBorder z-0 -translate-y-1/2" />
-          {[1, 2, 3, 4].map((r) => (
-            <div key={r} className="relative z-10 flex flex-col items-center gap-1 bg-darkBg px-2">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center border text-[10px] font-bold ${
-                r < currentRound
-                  ? 'bg-brandBlue border-brandBlue text-white'
-                  : r === currentRound
-                  ? 'border-brandBlue text-brandBlue bg-brandBlue/10 animate-pulse'
-                  : 'border-darkBorder text-gray-500 bg-darkBg'
-              }`}>
-                {r < currentRound ? '✓' : r}
+        {!interviewData?.isTopicWise && (
+          <div className="flex items-center justify-between w-full mb-8 px-4 text-[10px] text-gray-400 font-semibold relative">
+            <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-darkBorder z-0 -translate-y-1/2" />
+            {[1, 2, 3, 4].map((r) => (
+              <div key={r} className="relative z-10 flex flex-col items-center gap-1 bg-darkBg px-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center border text-[10px] font-bold ${
+                  r < currentRound
+                    ? 'bg-brandBlue border-brandBlue text-white'
+                    : r === currentRound
+                    ? 'border-brandBlue text-brandBlue bg-brandBlue/10 animate-pulse'
+                    : 'border-darkBorder text-gray-500 bg-darkBg'
+                }`}>
+                  {r < currentRound ? '✓' : r}
+                </div>
+                <span className={r === currentRound ? 'text-brandBlue font-bold' : 'text-gray-500'}>
+                  Round {r}
+                </span>
               </div>
-              <span className={r === currentRound ? 'text-brandBlue font-bold' : 'text-gray-500'}>
-                Round {r}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <button
           onClick={handleProceedNext}
           className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-brandBlue to-brandPurple hover:from-blue-600 hover:to-purple-600 text-white text-sm font-bold transition-all shadow-lg shadow-brandBlue/20 transform hover:-translate-y-0.5"
         >
-          {currentRound === 4 ? (
+          {interviewData?.isTopicWise || currentRound === 4 ? (
             <>
               <Sparkles className="w-4 h-4" />
               Finish & Generate Overall Report
@@ -781,7 +816,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       }
     }
     
-    if (nextRound > 4) {
+    if (interviewData?.isTopicWise || nextRound > 4) {
       handleFinishInterview();
     } else {
       setCurrentRound(nextRound);
@@ -867,9 +902,12 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-darkSurface border border-darkBorder rounded-xl p-4 mb-6 text-xs">
         <div className="flex items-center gap-3">
           <span className="px-2.5 py-1 rounded bg-brandBlue/10 border border-brandBlue/30 text-brandBlue font-bold uppercase tracking-wider">
-            Round {currentRound} of 4: {currentRound === 1 ? 'Rapid Fire Q&A (Web Dev, ML, OOPs, OS)' : (currentRound === 2 ? 'DSA coding' : (currentRound === 3 ? 'System Design' : 'Behavioral'))}
+            {interviewData?.isTopicWise 
+              ? `Topic-Wise Interview: ${interviewData.topicName} (Q${roundStep + 1} of 5)` 
+              : `Round ${currentRound} of 4: ${currentRound === 1 ? 'Rapid Fire Q&A (Web Dev, ML, OOPs, OS)' : (currentRound === 2 ? 'DSA coding' : (currentRound === 3 ? 'System Design' : 'Behavioral'))}`
+            }
           </span>
-          <span className="text-gray-400">Position: <strong className="text-gray-200">{roleName}</strong></span>
+          <span className="text-gray-400">{interviewData?.isTopicWise ? 'Topic' : 'Position'}: <strong className="text-gray-200">{interviewData?.isTopicWise ? interviewData.topicName : roleName}</strong></span>
         </div>
 
         <div className="flex items-center gap-4">
