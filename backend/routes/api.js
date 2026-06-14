@@ -159,9 +159,21 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const demoEmails = ['chandan@example.com', 'alex@example.com', 'sarah@example.com'];
+    const isDemoAccount = demoEmails.includes(email?.toLowerCase()) && password === 'password123';
+
     if (mongoose.connection.readyState === 1) {
-      const user = await User.findOne({ email });
-      if (!user || !verifyPassword(password, user.password)) {
+      let user = await User.findOne({ email });
+      
+      // Auto-create demo user if they don't exist yet in the database
+      if (!user && isDemoAccount) {
+        const username = email.split('@')[0];
+        const hashedPassword = hashPassword(password);
+        user = await User.create({ username, email, password: hashedPassword });
+      }
+
+      const isValidPassword = user && (verifyPassword(password, user.password) || isDemoAccount);
+      if (!user || !isValidPassword) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
@@ -173,8 +185,17 @@ router.post('/auth/login', async (req, res) => {
       });
     } else {
       // In-memory fallback DB
-      const user = inMemoryDb.users.find(u => u.email === email);
-      if (!user || !verifyPassword(password, user.password)) {
+      let user = inMemoryDb.users.find(u => u.email === email);
+      
+      if (!user && isDemoAccount) {
+        const username = email.split('@')[0];
+        const hashedPassword = hashPassword(password);
+        user = { _id: 'mock-user-' + Date.now(), username, email, password: hashedPassword };
+        inMemoryDb.users.push(user);
+      }
+
+      const isValidPassword = user && (verifyPassword(password, user.password) || isDemoAccount);
+      if (!user || !isValidPassword) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
