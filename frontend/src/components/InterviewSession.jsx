@@ -44,6 +44,9 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [roundEvaluations, setRoundEvaluations] = useState([]);
   const cameraStreamRef = useRef(null);
 
+  const interviewId = interviewData?._id || 'mock-interview';
+  const roleName = resumeData?.role || 'Backend Engineer';
+
   const mainVideoRef = useRef(null);
   const pipVideoRef = useRef(null);
   const sidebarVideoRef = useRef(null);
@@ -171,9 +174,6 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     synth.addEventListener('voiceschanged', handleVoicesChanged);
     return () => synth.removeEventListener('voiceschanged', handleVoicesChanged);
   }, []);
-
-  const interviewId = interviewData?._id || 'mock-interview';
-  const roleName = resumeData?.role || 'Backend Engineer';
 
   // 1. Initialize Sockets
   useEffect(() => {
