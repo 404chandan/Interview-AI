@@ -208,7 +208,7 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
     
     const askedQuestions = history.map(h => h.questionText);
     const uniqueUnasked = dsaQuestions.filter(q => !askedQuestions.some(asked => asked.includes(q.id) || q.questionText.includes(asked)));
-    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : dsaQuestions[Math.floor(Math.random() * dsaQuestions.length)];
+    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] : dsaQuestions[Math.floor(Math.random() * dsaQuestions.length)];
     return selected;
   } else if (round === 'system_design') {
     const designTopics = [
@@ -220,7 +220,7 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
     
     const askedQuestions = history.map(h => h.questionText);
     const uniqueUnasked = designTopics.filter(q => !askedQuestions.includes(q.questionText));
-    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[0] : designTopics[Math.floor(Math.random() * designTopics.length)];
+    const selected = uniqueUnasked.length > 0 ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] : designTopics[Math.floor(Math.random() * designTopics.length)];
     return selected;
   } else {
     const behavioral = [
@@ -237,7 +237,7 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
     
     const askedQuestions = history.map(h => h.questionText);
     const uniqueUnasked = behavioral.filter(q => !askedQuestions.includes(q));
-    let selectedQuestionText = uniqueUnasked.length > 0 ? uniqueUnasked[0] : behavioral[Math.floor(Math.random() * behavioral.length)];
+    let selectedQuestionText = uniqueUnasked.length > 0 ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] : behavioral[Math.floor(Math.random() * behavioral.length)];
 
     return {
       questionText: selectedQuestionText,
@@ -246,6 +246,33 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
     };
   }
 };
+
+function getRandomPatternForTopic(topic) {
+  const t = (topic || '').toLowerCase();
+  const patternsMap = {
+    'array': ['Two Pointers', 'Sliding Window', 'Prefix Sum / Accumulator', 'Kadane\'s Algorithm (Max Subarray)', 'Monotonic Stack / Queue', 'In-place modification', 'Hash Map/Set counts'],
+    'string': ['Two Pointers', 'Sliding Window / Substrings without repeats', 'Anagrams / Frequency maps', 'String parsing / Validation', 'Rabin-Karp or Rolling Hash'],
+    'tree': ['DFS (Pre/Post/In-order traversal)', 'BFS (Level order traversal)', 'Lowest Common Ancestor (LCA)', 'BST validation or search property', 'Path Sum / Tree DP'],
+    'bst': ['BST search and insertion', 'BST validation / Inorder traversal properties', 'Lowest Common Ancestor in BST'],
+    'graph': ['BFS (Shortest Path in unweighted grid)', 'DFS (Connectivity/Cycle detection)', 'Dijkstra\'s algorithm (Weighted shortest path)', 'Union-Find / Disjoint Set Union', 'Topological Sort (Kahn\'s algorithm or DFS)'],
+    'dp': ['1D Dynamic Programming (Fibonacci/Climbing Stairs)', '2D Dynamic Programming (Grid path / Edit Distance)', '0/1 Knapsack / Subset Sum', 'Longest Common Subsequence (LCS) / LIS', 'State/Choice optimization'],
+    'dynamic programming': ['1D Dynamic Programming', '2D Grid path optimization', 'Knapsack / Subset Sum', 'Longest Common Subsequence / LIS', 'Interval DP'],
+    'greedy': ['Interval Scheduling / Sorting', 'Max/Min Heap greedy choices', 'Activity Selection / Huffman coding'],
+    'trie': ['Prefix validation / Auto-complete Trie', 'Word Search / Backtracking with Trie', 'Suffix Trie / Dynamic routing matching'],
+    'heap': ['Top K elements', 'K-way merge / Merge K sorted lists', 'Running median / Dual Heaps'],
+    'binary search': ['Search on Sorted Array', 'Binary Search on Answer / Search Space', 'Search in Rotated Sorted Array'],
+    'linked list': ['Fast & Slow pointers (Cycle detection)', 'Reversing sub-segments', 'In-place node manipulation (Sentinel nodes)'],
+    'backtracking': ['Permutations & Combinations generator', 'Subset Sum / Partitioning', 'N-Queens / Sudoku / Grid search']
+  };
+
+  for (const key of Object.keys(patternsMap)) {
+    if (t.includes(key)) {
+      const patterns = patternsMap[key];
+      return patterns[Math.floor(Math.random() * patterns.length)];
+    }
+  }
+  return null;
+}
 
 export const generateQuestion = async (round, resumeData, history = [], targetCompany = 'Google') => {
   const role = resumeData?.role || "Software Engineer";
@@ -263,6 +290,10 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
   // Select a random DSA topic to avoid repeating substring questions
   const dsaTopics = ['Arrays', 'Strings', 'Stacks & Queues', 'Linked Lists', 'Trees & BST', 'Graphs', 'Dynamic Programming', 'Matrix / 2D Grid', 'Hash Tables', 'Recursion & Backtracking', 'Sorting & Binary Search'];
   const randomDsaTopic = dsaTopics[Math.floor(Math.random() * dsaTopics.length)];
+  const pattern = getRandomPatternForTopic(randomDsaTopic);
+  const patternInstruction = pattern 
+    ? `Specifically, focus on implementing the "${pattern}" pattern/algorithm technique for this question.` 
+    : '';
 
   // Real LLM Generation with rich context and settings
   const prompt = `
@@ -282,7 +313,7 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
     Instructions:
     - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
     - If round is "resume" or "rapid", generate a basic rapid interview question from one of these fields: Web Development, Machine Learning (ML), Object-Oriented Programming (OOPs), or Operating Systems (OS). Keep it general, conceptual, and quick to answer. Do NOT reference their resume projects or experience since this is a rapid fire round on core CS topics.
-    - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!).
+    - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!). ${patternInstruction}
       Provide a clean function boilerplate for JavaScript in "codeTemplate".
       Provide a unique slug/name (e.g. "reverse-string") in "id".
       Provide the main function name to evaluate in "functionName".

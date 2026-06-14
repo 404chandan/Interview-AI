@@ -929,11 +929,11 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             // Round Transition Panel
             renderTransitionPanel()
           ) : currentRound === 1 || currentRound === 4 ? (
-            // Verbal Rounds Layout (Resume & Behavioral)
-            <div className="flex-1 flex flex-col justify-between p-6 h-full min-h-0 overflow-y-auto">
+            // Verbal Rounds Layout (Split Layout: Video Left, Inputs Right)
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 h-full min-h-0 overflow-y-auto">
               
-              {/* Active-Speaker Video Call Stage */}
-              <div className="relative w-full h-[260px] sm:h-[320px] lg:h-[360px] bg-black rounded-xl overflow-hidden border border-darkBorder flex items-center justify-center shrink-0 mb-6">
+              {/* Left Column: Active-Speaker Video Call Stage */}
+              <div className="relative w-full h-[280px] lg:h-full bg-black rounded-xl overflow-hidden border border-darkBorder flex items-center justify-center min-h-[260px]">
 
                 {/* Persistent camera video element — never unmounted */}
                 {cameraOn && (
@@ -1015,141 +1015,145 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                 </div>
               </div>
 
-              {/* Question Screen */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-brandBlue" />
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Interviewer Prompt</span>
-                </div>
-                
-                <div className="text-base font-semibold text-gray-100 leading-relaxed border-l-2 border-brandBlue pl-4 min-h-[44px] select-text">
-                  {displayedQuestion}
-                  <span className="inline-block w-1.5 h-4 bg-brandBlue ml-0.5 animate-pulse" />
-                </div>
-              </div>
-
-              {/* User transcript console */}
-              <div className="space-y-4 pt-6 border-t border-darkBorder/40 mt-6 animate-fade-in">
-                <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+              {/* Right Column: Question Prompt & Response Controls */}
+              <div className="flex flex-col justify-between space-y-6 h-full min-h-0">
+                {/* Question Screen */}
+                <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-300 font-semibold">Input Mode:</span>
-                    <button
-                      onClick={() => {
-                        setInputMode('voice');
-                        if (!micOn && recognitionRef.current) {
-                          setTranscript('');
-                          micOnRef.current = true;
-                          try {
-                            recognitionRef.current.start();
-                          } catch (e) {}
-                          setMicOn(true);
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
-                        inputMode === 'voice' 
-                          ? 'border-brandBlue bg-brandBlue/10 text-brandBlue' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
-                      }`}
-                    >
-                      Oral / Voice
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputMode('typing');
-                        if (micOn && recognitionRef.current) {
-                          micOnRef.current = false;
-                          try {
-                            recognitionRef.current.stop();
-                          } catch (e) {}
-                          setMicOn(false);
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
-                        inputMode === 'typing' 
-                          ? 'border-brandPurple bg-brandPurple/10 text-brandPurple' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
-                      }`}
-                    >
-                      Keyboard / Typing
-                    </button>
+                    <Sparkles className="w-4 h-4 text-brandBlue" />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Interviewer Prompt</span>
                   </div>
-                  {micOn && <span className="text-brandAccent animate-pulse flex items-center gap-1">🎤 Capturing mic...</span>}
+                  
+                  <div className="text-base font-semibold text-gray-100 leading-relaxed border-l-2 border-brandBlue pl-4 min-h-[44px] select-text">
+                    {displayedQuestion}
+                    <span className="inline-block w-1.5 h-4 bg-brandBlue ml-0.5 animate-pulse" />
+                  </div>
                 </div>
 
-                {inputMode === 'voice' ? (
-                  // Voice Mode Visualizer
-                  <div className="w-full h-28 p-4 bg-darkBg/50 border border-darkBorder rounded-lg flex flex-col items-center justify-center text-center relative overflow-hidden group">
-                    <div className={`absolute w-36 h-36 bg-brandAccent/5 rounded-full blur-xl transition-all duration-1000 ${micOn ? 'scale-150 opacity-100' : 'scale-50 opacity-0'}`} />
-                    
-                    <div className="relative z-10 flex flex-col items-center gap-2">
-                      {micOn ? (
+                {/* User transcript console */}
+                <div className="space-y-4 pt-6 border-t border-darkBorder/40 mt-auto">
+                  <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-wide">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 font-semibold">Input Mode:</span>
+                      <button
+                        onClick={() => {
+                          setInputMode('voice');
+                          if (!micOn && recognitionRef.current) {
+                            setTranscript('');
+                            micOnRef.current = true;
+                            try {
+                              recognitionRef.current.start();
+                            } catch (e) {}
+                            setMicOn(true);
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
+                          inputMode === 'voice' 
+                            ? 'border-brandBlue bg-brandBlue/10 text-brandBlue' 
+                            : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
+                        }`}
+                      >
+                        Oral / Voice
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputMode('typing');
+                          if (micOn && recognitionRef.current) {
+                            micOnRef.current = false;
+                            try {
+                              recognitionRef.current.stop();
+                            } catch (e) {}
+                            setMicOn(false);
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
+                          inputMode === 'typing' 
+                            ? 'border-brandPurple bg-brandPurple/10 text-brandPurple' 
+                            : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
+                        }`}
+                      >
+                        Keyboard / Typing
+                      </button>
+                    </div>
+                    {micOn && <span className="text-brandAccent animate-pulse flex items-center gap-1">🎤 Capturing mic...</span>}
+                  </div>
+
+                  {inputMode === 'voice' ? (
+                    // Voice Mode Visualizer
+                    <div className="w-full h-28 p-4 bg-darkBg/50 border border-darkBorder rounded-lg flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                      <div className={`absolute w-36 h-36 bg-brandAccent/5 rounded-full blur-xl transition-all duration-1000 ${micOn ? 'scale-150 opacity-100' : 'scale-50 opacity-0'}`} />
+                      
+                      <div className="relative z-10 flex flex-col items-center gap-2">
+                        {micOn ? (
+                          <>
+                            <div className="flex items-center gap-1.5 h-6">
+                              <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.1s' }} />
+                              <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.2s' }} />
+                              <div className="w-1.5 bg-brandAccent rounded-full animate-wave-short" style={{ animationDelay: '0.3s' }} />
+                              <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.4s' }} />
+                              <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.5s' }} />
+                            </div>
+                            <p className="text-xs text-gray-300 font-bold max-w-2xl line-clamp-2 italic px-4">
+                              "{transcript.trim() || 'Listening to your voice... Speak now!'}"
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleMicToggle}
+                              className="w-10 h-10 rounded-full bg-brandAccent/10 border border-brandAccent/30 hover:bg-brandAccent/20 flex items-center justify-center text-brandAccent transition-all shadow-lg shadow-brandAccent/10"
+                            >
+                              <Mic className="w-5 h-5" />
+                            </button>
+                            <p className="text-xs text-gray-400 font-semibold">Microphone is off. Click to start speaking.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <textarea
+                      value={transcript}
+                      onChange={(e) => setTranscript(e.target.value)}
+                      placeholder="Type your explanation or answer here..."
+                      className="w-full h-28 p-4 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-sm text-gray-200 placeholder-gray-600 resize-none leading-relaxed"
+                    />
+                  )}
+                  
+                  <div className="flex justify-between items-center w-full">
+                    <button
+                      type="button"
+                      onClick={handleSkipQuestion}
+                      disabled={isThinking || submittingAnswer}
+                      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-100 bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Ask different question
+                    </button>
+                    <button
+                      onClick={handleSubmitAnswer}
+                      disabled={submittingAnswer || !transcript.trim()}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-brandBlue hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-brandBlue/15 disabled:opacity-50"
+                    >
+                      {submittingAnswer ? (
                         <>
-                          <div className="flex items-center gap-1.5 h-6">
-                            <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.1s' }} />
-                            <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.2s' }} />
-                            <div className="w-1.5 bg-brandAccent rounded-full animate-wave-short" style={{ animationDelay: '0.3s' }} />
-                            <div className="w-1.5 bg-brandAccent rounded-full animate-wave-medium" style={{ animationDelay: '0.4s' }} />
-                            <div className="w-1.5 bg-brandAccent rounded-full animate-wave-tall" style={{ animationDelay: '0.5s' }} />
-                          </div>
-                          <p className="text-xs text-gray-300 font-bold max-w-2xl line-clamp-2 italic px-4">
-                            "{transcript.trim() || 'Listening to your voice... Speak now!'}"
-                          </p>
+                          <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Evaluating...
                         </>
                       ) : (
                         <>
-                          <button
-                            type="button"
-                            onClick={handleMicToggle}
-                            className="w-10 h-10 rounded-full bg-brandAccent/10 border border-brandAccent/30 hover:bg-brandAccent/20 flex items-center justify-center text-brandAccent transition-all shadow-lg shadow-brandAccent/10"
-                          >
-                            <Mic className="w-5 h-5" />
-                          </button>
-                          <p className="text-xs text-gray-400 font-semibold">Microphone is off. Click to start speaking.</p>
+                          Submit Response
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </>
                       )}
-                    </div>
+                    </button>
                   </div>
-                ) : (
-                  <textarea
-                    value={transcript}
-                    onChange={(e) => setTranscript(e.target.value)}
-                    placeholder="Type your explanation or answer here..."
-                    className="w-full h-28 p-4 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-sm text-gray-200 placeholder-gray-600 resize-none leading-relaxed"
-                  />
-                )}
-                
-                <div className="flex justify-between items-center w-full">
-                  <button
-                    type="button"
-                    onClick={handleSkipQuestion}
-                    disabled={isThinking || submittingAnswer}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-100 bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Ask different question
-                  </button>
-                  <button
-                    onClick={handleSubmitAnswer}
-                    disabled={submittingAnswer || !transcript.trim()}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-brandBlue hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-brandBlue/15 disabled:opacity-50"
-                  >
-                    {submittingAnswer ? (
-                      <>
-                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Evaluating...
-                      </>
-                    ) : (
-                      <>
-                        Submit Response
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
+
             </div>
           ) : currentRound === 2 ? (
             // Coding Round Layout (Monaco Editor Integration)

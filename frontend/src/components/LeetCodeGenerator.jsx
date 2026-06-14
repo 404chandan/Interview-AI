@@ -7,8 +7,14 @@ export default function LeetCodeGenerator() {
   const [topic, setTopic] = useState('Arrays');
   const [difficulty, setDifficulty] = useState('medium');
   const [company, setCompany] = useState('Google');
-  const [question, setQuestion] = useState(null);
-  const [generating, setGenerating] = useState(false);
+  const [historyList, setHistoryList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('leetcode_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const topics = [
     'Arrays', 'Trees', 'Graphs', 'DP', 'Greedy', 'Trie', 'Heap', 
@@ -27,12 +33,17 @@ export default function LeetCodeGenerator() {
       const res = await fetch(`${BACKEND_URL}/api/leetcode/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, difficulty, company })
+        body: JSON.stringify({ topic, difficulty, company, history: historyList })
       });
 
       if (!res.ok) throw new Error('Generation failed');
       const data = await res.json();
       setQuestion(data);
+      
+      const newHistory = [...historyList, data.id || data.functionName || data.questionText.split('\n')[0]];
+      if (newHistory.length > 30) newHistory.shift();
+      setHistoryList(newHistory);
+      localStorage.setItem('leetcode_history', JSON.stringify(newHistory));
     } catch (err) {
       console.warn("Offline fallback for LeetCode question generation.");
       
@@ -90,6 +101,10 @@ export default function LeetCodeGenerator() {
 
       setTimeout(() => {
         setQuestion(mockQ);
+        const newHistory = [...historyList, mockQ.id];
+        if (newHistory.length > 30) newHistory.shift();
+        setHistoryList(newHistory);
+        localStorage.setItem('leetcode_history', JSON.stringify(newHistory));
       }, 500);
     } finally {
       setGenerating(false);
@@ -111,7 +126,23 @@ export default function LeetCodeGenerator() {
 
       {!question ? (
         <div className="glass-panel rounded-xl p-8 max-w-2xl mx-auto text-center space-y-6">
-          <BookOpen className="w-12 h-12 text-brandBlue mx-auto" />
+          <div className="flex justify-between items-start">
+            <div className="w-12 h-12" />
+            <BookOpen className="w-12 h-12 text-brandBlue" />
+            {historyList.length > 0 ? (
+              <button 
+                onClick={() => {
+                  setHistoryList([]);
+                  localStorage.removeItem('leetcode_history');
+                }}
+                className="text-xs text-red-400 hover:text-red-300 transition-colors border border-red-500/20 px-2.5 py-1 rounded bg-red-500/5 hover:bg-red-500/10"
+              >
+                Reset History ({historyList.length})
+              </button>
+            ) : (
+              <div className="w-[100px]" />
+            )}
+          </div>
           <h2 className="text-lg font-bold text-gray-200">Configure Practice Workspace</h2>
           
           <div className="space-y-4 text-left">

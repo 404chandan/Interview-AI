@@ -769,12 +769,40 @@ router.get('/interview/:id/report', async (req, res) => {
   }
 });
 
+function getRandomPatternForTopic(topic) {
+  const t = (topic || '').toLowerCase();
+  const patternsMap = {
+    'array': ['Two Pointers', 'Sliding Window', 'Prefix Sum / Accumulator', 'Kadane\'s Algorithm (Max Subarray)', 'Monotonic Stack / Queue', 'In-place modification', 'Hash Map/Set counts'],
+    'string': ['Two Pointers', 'Sliding Window / Substrings without repeats', 'Anagrams / Frequency maps', 'String parsing / Validation', 'Rabin-Karp or Rolling Hash'],
+    'tree': ['DFS (Pre/Post/In-order traversal)', 'BFS (Level order traversal)', 'Lowest Common Ancestor (LCA)', 'BST validation or search property', 'Path Sum / Tree DP'],
+    'bst': ['BST search and insertion', 'BST validation / Inorder traversal properties', 'Lowest Common Ancestor in BST'],
+    'graph': ['BFS (Shortest Path in unweighted grid)', 'DFS (Connectivity/Cycle detection)', 'Dijkstra\'s algorithm (Weighted shortest path)', 'Union-Find / Disjoint Set Union', 'Topological Sort (Kahn\'s algorithm or DFS)'],
+    'dp': ['1D Dynamic Programming (Fibonacci/Climbing Stairs)', '2D Dynamic Programming (Grid path / Edit Distance)', '0/1 Knapsack / Subset Sum', 'Longest Common Subsequence (LCS) / LIS', 'State/Choice optimization'],
+    'dynamic programming': ['1D Dynamic Programming', '2D Grid path optimization', 'Knapsack / Subset Sum', 'Longest Common Subsequence / LIS', 'Interval DP'],
+    'greedy': ['Interval Scheduling / Sorting', 'Max/Min Heap greedy choices', 'Activity Selection / Huffman coding'],
+    'trie': ['Prefix validation / Auto-complete Trie', 'Word Search / Backtracking with Trie', 'Suffix Trie / Dynamic routing matching'],
+    'heap': ['Top K elements', 'K-way merge / Merge K sorted lists', 'Running median / Dual Heaps'],
+    'binary search': ['Search on Sorted Array', 'Binary Search on Answer / Search Space', 'Search in Rotated Sorted Array'],
+    'linked list': ['Fast & Slow pointers (Cycle detection)', 'Reversing sub-segments', 'In-place node manipulation (Sentinel nodes)'],
+    'backtracking': ['Permutations & Combinations generator', 'Subset Sum / Partitioning', 'N-Queens / Sudoku / Grid search']
+  };
+
+  for (const key of Object.keys(patternsMap)) {
+    if (t.includes(key)) {
+      const patterns = patternsMap[key];
+      return patterns[Math.floor(Math.random() * patterns.length)];
+    }
+  }
+  return null;
+}
+
 /**
  * 10. Standalone LeetCode dynamic question generator
  */
 router.post('/leetcode/generate', async (req, res) => {
   try {
-    const { topic, difficulty, company } = req.body;
+    const { topic, difficulty, company, history } = req.body;
+    const askedHistory = Array.isArray(history) ? history : [];
     
     // Construct dynamic prompt or return mock
     if (!aiModel) {
@@ -782,68 +810,109 @@ router.post('/leetcode/generate', async (req, res) => {
       const cleanCompany = company || 'General';
       const lowercaseTopic = cleanTopic.toLowerCase();
       
-      let mockQ;
+      let mockPool = [];
       if (lowercaseTopic.includes('tree') || lowercaseTopic.includes('bst')) {
-        mockQ = {
-          questionText: `[${cleanCompany} Style Challenge] Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: root = [3,9,20,null,null,15,7]\nOutput: 3\n\`\`\`\n\nConstraints:\n- The number of nodes in the tree is in the range [0, 10^4].`,
-          codeTemplate: `function maxDepth(root) {\n    // Write your code here\n};`,
-          difficulty: difficulty || 'medium',
-          topics: [cleanTopic, 'DFS'],
-          id: 'max-depth-' + Date.now(),
-          functionName: 'maxDepth',
-          testCases: [
-            { input: [[3,9,20,null,null,15,7]], expected: 3 },
-            { input: [[1,null,2]], expected: 2 }
-          ]
-        };
+        mockPool = [
+          {
+            questionText: `[${cleanCompany} Style Challenge] Given the root of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: root = [3,9,20,null,null,15,7]\nOutput: 3\n\`\`\`\n\nConstraints:\n- The number of nodes in the tree is in the range [0, 10^4].`,
+            codeTemplate: `function maxDepth(root) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'medium',
+            topics: [cleanTopic, 'DFS'],
+            id: 'max-depth-' + Date.now(),
+            functionName: 'maxDepth',
+            testCases: [
+              { input: [[3,9,20,null,null,15,7]], expected: 3 },
+              { input: [[1,null,2]], expected: 2 }
+            ]
+          },
+          {
+            questionText: `[${cleanCompany} Style Challenge] Given the roots of two binary trees p and q, write a function to check if they are the same or not.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: p = [1,2,3], q = [1,2,3]\nOutput: true\n\`\`\``,
+            codeTemplate: `function isSameTree(p, q) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'easy',
+            topics: [cleanTopic, 'Trees'],
+            id: 'same-tree-' + Date.now(),
+            functionName: 'isSameTree',
+            testCases: [
+              { input: [[1,2,3], [1,2,3]], expected: true },
+              { input: [[1,2], [1,null,2]], expected: false }
+            ]
+          }
+        ];
       } else if (lowercaseTopic.includes('graph') || lowercaseTopic.includes('bfs') || lowercaseTopic.includes('dfs')) {
-        mockQ = {
-          questionText: `[${cleanCompany} Style Challenge] There are an total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai. Return true if you can finish all courses.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: numCourses = 2, prerequisites = [[1,0]]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= numCourses <= 2000`,
-          codeTemplate: `function canFinish(numCourses, prerequisites) {\n    // Write your code here\n};`,
-          difficulty: difficulty || 'medium',
-          topics: [cleanTopic, 'BFS', 'Topological Sort'],
-          id: 'course-schedule-' + Date.now(),
-          functionName: 'canFinish',
-          testCases: [
-            { input: [2, [[1,0]]], expected: true },
-            { input: [2, [[1,0],[0,1]]], expected: false }
-          ]
-        };
+        mockPool = [
+          {
+            questionText: `[${cleanCompany} Style Challenge] There are a total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai. Return true if you can finish all courses.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: numCourses = 2, prerequisites = [[1,0]]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= numCourses <= 2000`,
+            codeTemplate: `function canFinish(numCourses, prerequisites) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'medium',
+            topics: [cleanTopic, 'BFS', 'Topological Sort'],
+            id: 'course-schedule-' + Date.now(),
+            functionName: 'canFinish',
+            testCases: [
+              { input: [2, [[1,0]]], expected: true },
+              { input: [2, [[1,0],[0,1]]], expected: false }
+            ]
+          }
+        ];
       } else if (lowercaseTopic.includes('matrix') || lowercaseTopic.includes('grid')) {
-        mockQ = {
-          questionText: `[${cleanCompany} Style Challenge] Given an m x n 2D binary grid grid which represents a map of '1's (land) and '0's (water), return the number of islands.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]\nOutput: 1\n\`\`\`\n\nConstraints:\n- m == grid.length\n- n == grid[i].length`,
-          codeTemplate: `function numIslands(grid) {\n    // Write your code here\n};`,
-          difficulty: difficulty || 'hard',
-          topics: [cleanTopic, 'DFS', 'Matrix'],
-          id: 'num-islands-' + Date.now(),
-          functionName: 'numIslands',
-          testCases: [
-            { input: [[["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]], expected: 1 }
-          ]
-        };
+        mockPool = [
+          {
+            questionText: `[${cleanCompany} Style Challenge] Given an m x n 2D binary grid grid which represents a map of '1's (land) and '0's (water), return the number of islands.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]\nOutput: 1\n\`\`\`\n\nConstraints:\n- m == grid.length\n- n == grid[i].length`,
+            codeTemplate: `function numIslands(grid) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'hard',
+            topics: [cleanTopic, 'DFS', 'Matrix'],
+            id: 'num-islands-' + Date.now(),
+            functionName: 'numIslands',
+            testCases: [
+              { input: [[["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]], expected: 1 }
+            ]
+          }
+        ];
       } else {
-        // Default Array/String fallback
-        mockQ = {
-          questionText: `[${cleanCompany} Style Challenge] Given an array of integers nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\`\n\nConstraints:\n- 1 <= nums.length <= 10^5`,
-          codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
-          difficulty: difficulty || 'easy',
-          topics: [cleanTopic, 'Hash Set'],
-          id: 'contains-duplicate-' + Date.now(),
-          functionName: 'containsDuplicate',
-          testCases: [
-            { input: [[1, 2, 3, 1]], expected: true },
-            { input: [[1, 2, 3, 4]], expected: false }
-          ]
-        };
+        mockPool = [
+          {
+            questionText: `[${cleanCompany} Style Challenge] Given an array of integers nums, return true if any value appears at least twice in the array, and return false if every element is distinct.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: nums = [1,2,3,1]\nOutput: true\n\`\`\``,
+            codeTemplate: `function containsDuplicate(nums) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'easy',
+            topics: [cleanTopic, 'Hash Set'],
+            id: 'contains-duplicate-' + Date.now(),
+            functionName: 'containsDuplicate',
+            testCases: [
+              { input: [[1, 2, 3, 1]], expected: true },
+              { input: [[1, 2, 3, 4]], expected: false }
+            ]
+          },
+          {
+            questionText: `[${cleanCompany} Style Challenge] Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\n### Examples\n**Example 1:**\n\`\`\`\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\n\`\`\``,
+            codeTemplate: `function twoSum(nums, target) {\n    // Write your code here\n};`,
+            difficulty: difficulty || 'easy',
+            topics: [cleanTopic, 'Two Pointers'],
+            id: 'two-sum-' + Date.now(),
+            functionName: 'twoSum',
+            testCases: [
+              { input: [[2, 7, 11, 15], 9], expected: [0, 1] }
+            ]
+          }
+        ];
       }
-      return res.json(mockQ);
+
+      // Filter out mock options already in history
+      const uniqueMocks = mockPool.filter(mock => !askedHistory.some(h => mock.questionText.includes(h) || h.includes(mock.functionName) || h.includes(mock.id)));
+      const selectedMock = uniqueMocks.length > 0 ? uniqueMocks[Math.floor(Math.random() * uniqueMocks.length)] : mockPool[Math.floor(Math.random() * mockPool.length)];
+      return res.json(selectedMock);
     }
 
+    const pattern = getRandomPatternForTopic(topic);
+    const patternInstruction = pattern 
+      ? `Specifically, you must focus on implementing the "${pattern}" pattern/algorithm technique for this question to keep dynamic questions highly varied and covering different concepts.`
+      : `Choose a random standard LeetCode pattern for this topic (e.g. Sliding Window, Two Pointers, DFS, BFS, DP, etc.) and generate a different pattern than previously asked.`;
+
     const prompt = `
-      Create a LeetCode style coding question.
-      Primary Topic: ${topic}
-      Difficulty level: ${difficulty}
-      Target Company style: ${company}
+      Create a LeetCode style coding question for the topic: "${topic}", with difficulty: "${difficulty}", in the style of: "${company}".
+      
+      ${patternInstruction}
+      
+      CRITICAL REPETITION PREVENTION: You must NOT generate any of the following previously generated/solved questions to avoid duplication: ${JSON.stringify(askedHistory)}.
+      Provide a completely different algorithm or pattern within the "${topic}" domain (e.g. if previous questions used sliding window, use prefix sum, two pointers, stacks, or dynamic programming).
       
       Output strictly as a JSON object matching this structure:
       {
@@ -852,7 +921,8 @@ router.post('/leetcode/generate', async (req, res) => {
         "difficulty": "${difficulty}",
         "topics": ["${topic}", "other-topic"],
         "id": "slug-id",
-        "functionName": "the main entry function name"
+        "functionName": "the main entry function name",
+        "testCases": [{"input": [args], "expected": val}]
       }
     `;
 
