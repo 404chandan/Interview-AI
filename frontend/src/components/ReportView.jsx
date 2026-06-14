@@ -176,13 +176,17 @@ export default function ReportView({ interviewId, onNavigate }) {
             <h2 className="text-base font-bold text-gray-200 mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-brandBlue" /> Section Scorecards
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 text-center">
-              {Object.entries(interview?.scores || {}).map(([key, val]) => (
-                <div key={key} className="p-3 bg-darkBg/50 border border-darkBorder rounded-lg">
-                  <span className="text-[10px] text-gray-500 font-bold uppercase block truncate">{key}</span>
-                  <span className="text-lg font-bold text-gray-100 font-mono mt-1 block">{val}%</span>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-4 text-center justify-start">
+              {Object.entries(interview?.scores || {})
+                .filter(([key]) => !interview?.isTopicWise || key === 'technical')
+                .map(([key, val]) => (
+                  <div key={key} className="p-3 bg-darkBg/50 border border-darkBorder rounded-lg flex-1 min-w-[100px] max-w-[180px]">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase block truncate">
+                      {interview?.isTopicWise && key === 'technical' ? "Topic Depth" : key}
+                    </span>
+                    <span className="text-lg font-bold text-gray-100 font-mono mt-1 block">{val}%</span>
+                  </div>
+                ))}
             </div>
           </div>
 

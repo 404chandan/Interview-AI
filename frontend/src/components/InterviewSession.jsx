@@ -706,16 +706,18 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         </div>
         
         <h2 className="text-2xl font-bold text-gray-100 mb-1">
-          Round {currentRound} Complete!
+          {interviewData?.isTopicWise ? "Topic Interview Complete!" : `Round ${currentRound} Complete!`}
         </h2>
         <p className="text-sm text-brandBlue font-semibold mb-4 uppercase tracking-wider">
-          {roundNames[currentRound]}
+          {interviewData?.isTopicWise ? `Topic: ${interviewData.topicName}` : roundNames[currentRound]}
         </p>
 
         {/* Score & Improvements Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-6 text-left">
           <div className="bg-darkSurface border border-darkBorder rounded-xl p-5 flex flex-col justify-center items-center text-center">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Round Score</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+              {interviewData?.isTopicWise ? "Interview Score" : "Round Score"}
+            </span>
             <span className="text-3xl font-black text-brandBlue">{avgScore} / 10</span>
           </div>
           
