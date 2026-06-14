@@ -15,6 +15,8 @@ export default function LeetCodeGenerator() {
       return [];
     }
   });
+  const [question, setQuestion] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
   const topics = [
     'Arrays', 'Trees', 'Graphs', 'DP', 'Greedy', 'Trie', 'Heap', 
