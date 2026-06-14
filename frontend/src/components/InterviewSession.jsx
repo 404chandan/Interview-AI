@@ -36,9 +36,10 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [inputMode, setInputMode] = useState('voice'); // 'voice' or 'typing'
   const [displayedQuestion, setDisplayedQuestion] = useState('');
   const [latency, setLatency] = useState(24);
-  const [timeLeft, setTimeLeft] = useState(300);
+  const [timeLeft, setTimeLeft] = useState(1800);
   const [showProceedButton, setShowProceedButton] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
+  const [roundEvaluations, setRoundEvaluations] = useState([]);
   const cameraStreamRef = useRef(null);
 
   const mainVideoRef = useRef(null);
@@ -57,12 +58,12 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   // Timer Effect
   useEffect(() => {
     const roundTimes = {
-      1: 300, // 5 min
-      2: 900, // 15 min
-      3: 600, // 10 min
-      4: 300  // 5 min
+      1: 1800, // 30 mins
+      2: 2700, // 45 mins
+      3: 900,  // 15 mins
+      4: 600   // 10 mins
     };
-    setTimeLeft(roundTimes[currentRound] || 300);
+    setTimeLeft(roundTimes[currentRound] || 1800);
   }, [currentRound]);
 
   useEffect(() => {
@@ -213,26 +214,32 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   // Callback refs to bind the webcam stream immediately when elements mount
   const setMainVideo = (el) => {
     mainVideoRef.current = el;
-    if (el && webcamStream) el.srcObject = webcamStream;
+    if (el && webcamStream && el.srcObject !== webcamStream) {
+      el.srcObject = webcamStream;
+    }
   };
 
   const setPipVideo = (el) => {
     pipVideoRef.current = el;
-    if (el && webcamStream) el.srcObject = webcamStream;
+    if (el && webcamStream && el.srcObject !== webcamStream) {
+      el.srcObject = webcamStream;
+    }
   };
 
   const setSidebarVideo = (el) => {
     sidebarVideoRef.current = el;
-    if (el && webcamStream) el.srcObject = webcamStream;
+    if (el && webcamStream && el.srcObject !== webcamStream) {
+      el.srcObject = webcamStream;
+    }
   };
 
   // Re-apply stream if webcamStream state updates
   useEffect(() => {
     if (webcamStream) {
-      if (mainVideoRef.current) mainVideoRef.current.srcObject = webcamStream;
-      if (pipVideoRef.current) pipVideoRef.current.srcObject = webcamStream;
-      if (sidebarVideoRef.current) sidebarVideoRef.current.srcObject = webcamStream;
-      if (persistentVideoRef.current) persistentVideoRef.current.srcObject = webcamStream;
+      if (mainVideoRef.current && mainVideoRef.current.srcObject !== webcamStream) mainVideoRef.current.srcObject = webcamStream;
+      if (pipVideoRef.current && pipVideoRef.current.srcObject !== webcamStream) pipVideoRef.current.srcObject = webcamStream;
+      if (sidebarVideoRef.current && sidebarVideoRef.current.srcObject !== webcamStream) sidebarVideoRef.current.srcObject = webcamStream;
+      if (persistentVideoRef.current && persistentVideoRef.current.srcObject !== webcamStream) persistentVideoRef.current.srcObject = webcamStream;
     }
   }, [webcamStream]);
 
@@ -472,9 +479,8 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     const textToSubmit = transcript.trim();
     if (!textToSubmit) return;
     setSubmittingAnswer(true);
-    setTranscript(''); // Clear immediately so it is ready for continuous dictation
+    setTranscript('');
 
-    // Stop recognition to clear event.results session state for the next question
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -497,31 +503,34 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       if (!res.ok) throw new Error("Answer API error");
       const data = await res.json();
       
-      // Setup dynamic AI follow-up (2 questions total per verbal round: 1 initial + 1 follow-up)
-      if (roundStep < 1 && (currentRound === 1 || currentRound === 4)) {
+      const newEval = {
+        questionText: currentQuestion?.questionText || "Question",
+        score: data.evaluation.score || 7,
+        feedback: data.evaluation.feedback || "Evaluated successfully."
+      };
+      setRoundEvaluations(prev => [...prev, newEval]);
+
+      const limit = currentRound === 1 ? 9 : 2; // 10 questions for Round 1 (0 to 9), 3 questions for Round 4 (0 to 2)
+      if (roundStep < limit) {
         setRoundStep(prev => prev + 1);
-        const nextFollowUp = data.evaluation.followUpQuestion || "Could you please elaborate on that experience or answer?";
-        setQuestionText(nextFollowUp);
-        speakText(nextFollowUp);
+        getQuestion(currentRound);
         setTranscript('');
       } else {
-        // Round complete, show transition guided proceed screen
         setShowProceedButton(true);
       }
     } catch (err) {
       console.warn("Answer submission offline fallback.");
-      if (roundStep < 1 && (currentRound === 1 || currentRound === 4)) {
+      const newEval = {
+        questionText: currentQuestion?.questionText || "Question",
+        score: 7,
+        feedback: "Offline evaluation fallback."
+      };
+      setRoundEvaluations(prev => [...prev, newEval]);
+
+      const limit = currentRound === 1 ? 9 : 2;
+      if (roundStep < limit) {
         setRoundStep(prev => prev + 1);
-        const fallbackQuestions = currentRound === 1 
-          ? [
-              "That makes sense. How did you handle testing and performance optimization on that backend stack?"
-            ]
-          : [
-              "Thank you for sharing. How did this experience change the way you interact with similar peers or situations?"
-            ];
-        const followUp = fallbackQuestions[roundStep] || "Can you tell me more about that?";
-        setQuestionText(followUp);
-        speakText(followUp);
+        getQuestion(currentRound);
         setTranscript('');
       } else {
         setShowProceedButton(true);
@@ -533,14 +542,40 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
 
   // 8. Handle DSA Code submission
   const handleCodeSubmitted = (submission) => {
-    // Wait for the candidate to review their coding results, then set proceed
-    setTimeout(() => {
-      setShowProceedButton(true);
-    }, 3500); // give them 3.5s to read the initial score, then transition to proceed screen
+    const newEval = {
+      questionText: currentQuestion?.questionText || "DSA Coding Challenge",
+      score: Math.round((submission.correctnessScore || 80) / 10),
+      feedback: submission.aiFeedback || "Code submitted and run successfully."
+    };
+    setRoundEvaluations(prev => [...prev, newEval]);
+
+    if (roundStep < 1) { // 2 questions total for DSA (0 and 1)
+      setTimeout(() => {
+        setRoundStep(prev => prev + 1);
+        getQuestion(2);
+      }, 3000);
+    } else {
+      setTimeout(() => {
+        setShowProceedButton(true);
+      }, 3500);
+    }
   };
 
   // 9. Handle System Design Submission
   const handleDesignSubmitted = (evaluation) => {
+    const averageScore = Math.round(
+      ((evaluation.scalabilityScore || 80) + 
+       (evaluation.cachingScore || 80) + 
+       (evaluation.databaseScore || 80) + 
+       (evaluation.apiDesignScore || 80)) / 40
+    );
+    const newEval = {
+      questionText: currentQuestion?.questionText || "System Design Challenge",
+      score: averageScore,
+      feedback: evaluation.comments || "System design layout submitted successfully."
+    };
+    setRoundEvaluations(prev => [...prev, newEval]);
+
     setTimeout(() => {
       setShowProceedButton(true);
     }, 4000);
@@ -553,37 +588,65 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
 
   const renderTransitionPanel = () => {
     const roundNames = {
-      1: "Resume Deep Dive",
+      1: "Rapid Fire Q&A (Web Dev, ML, OOPs, OS)",
       2: "DSA Coding Sandbox",
       3: "System Design Architecture",
       4: "Behavioral & Situation Assessment"
     };
 
-    const roundDescriptions = {
-      1: "Your resume profile, experiences, and technical backgrounds have been reviewed. Ready to proceed to the live coding round?",
-      2: "Your coding implementation and algorithm efficiency have been evaluated. Ready to proceed to the system architecture design round?",
-      3: "Your system architecture whiteboard schema has been analyzed. Ready to proceed to the behavioral questions?",
-      4: "All assessment metrics have been gathered. Ready to finalize the interview and generate your performance dossier?"
-    };
+    const avgScore = roundEvaluations.length > 0
+      ? (roundEvaluations.reduce((sum, item) => sum + item.score, 0) / roundEvaluations.length).toFixed(1)
+      : "0";
 
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-2xl mx-auto h-full">
-        <div className="w-16 h-16 rounded-full bg-brandBlue/15 border border-brandBlue/30 flex items-center justify-center text-brandBlue mb-6 animate-pulse">
+      <div className="flex-1 flex flex-col items-center justify-start p-8 text-center max-w-3xl mx-auto h-full overflow-y-auto">
+        <div className="w-16 h-16 rounded-full bg-brandBlue/15 border border-brandBlue/30 flex items-center justify-center text-brandBlue mb-4 animate-pulse">
           <CheckCircle2 className="w-8 h-8" />
         </div>
         
-        <h2 className="text-2xl font-bold text-gray-100 mb-2">
+        <h2 className="text-2xl font-bold text-gray-100 mb-1">
           Round {currentRound} Complete!
         </h2>
-        <p className="text-sm text-brandBlue font-semibold mb-6 uppercase tracking-wider">
+        <p className="text-sm text-brandBlue font-semibold mb-4 uppercase tracking-wider">
           {roundNames[currentRound]}
         </p>
 
-        <div className="bg-darkSurface border border-darkBorder rounded-xl p-5 mb-8 w-full text-left">
-          <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">Round Summary</p>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            {roundDescriptions[currentRound]}
-          </p>
+        {/* Score & Improvements Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-6 text-left">
+          <div className="bg-darkSurface border border-darkBorder rounded-xl p-5 flex flex-col justify-center items-center text-center">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Round Score</span>
+            <span className="text-3xl font-black text-brandBlue">{avgScore} / 10</span>
+          </div>
+          
+          <div className="md:col-span-2 bg-darkSurface border border-darkBorder rounded-xl p-5">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 block">Key Performance Tips</span>
+            <ul className="list-disc pl-5 text-xs text-gray-300 space-y-1.5">
+              {roundEvaluations.map((item, idx) => (
+                <li key={idx} className="leading-relaxed">
+                  <strong>Q{idx + 1}:</strong> {item.feedback || "Good response. Try expanding on lower-level implementation details."}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Detailed Question Breakdown */}
+        <div className="w-full text-left space-y-3 mb-8">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Question Breakdown</h3>
+          <div className="space-y-2.5">
+            {roundEvaluations.map((item, idx) => (
+              <div key={idx} className="bg-darkSurface border border-darkBorder rounded-xl p-4 space-y-2">
+                <div className="flex justify-between items-start gap-4">
+                  <span className="text-xs font-bold text-gray-200">
+                    Q{idx + 1}: {item.questionText?.split('\n')[0]?.replace(/\[.*?\]\s*/g, '') || "Interview Question"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-brandBlue/10 border border-brandBlue/20 text-brandBlue">
+                    Score: {item.score} / 10
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Progress Timeline */}
@@ -631,6 +694,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const advanceRound = () => {
     setTranscript('');
     setRoundStep(0);
+    setRoundEvaluations([]);
     const nextRound = currentRound + 1;
     
     // Stop recognition to clear session state
@@ -730,7 +794,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-darkSurface border border-darkBorder rounded-xl p-4 mb-6 text-xs">
         <div className="flex items-center gap-3">
           <span className="px-2.5 py-1 rounded bg-brandBlue/10 border border-brandBlue/30 text-brandBlue font-bold uppercase tracking-wider">
-            Round {currentRound} of 4: {currentRound === 1 ? 'Resume Deep Dive' : (currentRound === 2 ? 'DSA coding' : (currentRound === 3 ? 'System Design' : 'Behavioral'))}
+            Round {currentRound} of 4: {currentRound === 1 ? 'Rapid Fire Q&A (Web Dev, ML, OOPs, OS)' : (currentRound === 2 ? 'DSA coding' : (currentRound === 3 ? 'System Design' : 'Behavioral'))}
           </span>
           <span className="text-gray-400">Position: <strong className="text-gray-200">{roleName}</strong></span>
         </div>
@@ -750,21 +814,21 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             {/* Media Controls */}
             <button 
               onClick={() => setCameraOn(!cameraOn)} 
-              className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${cameraOn ? 'border-brandBlue bg-brandBlue/15 text-brandBlue' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'}`}
             >
               {cameraOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
             </button>
             
             <button 
               onClick={handleMicToggle} 
-              className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${micOn ? 'border-brandAccent bg-brandAccent/15 text-brandAccent animate-pulse' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'}`}
             >
               {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </button>
 
             <button 
               onClick={() => setSpeechVolume(!speechVolume)} 
-              className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}
+              className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'}`}
             >
               {speechVolume ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -876,7 +940,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                   <video
                     ref={(el) => {
                       persistentVideoRef.current = el;
-                      if (el && webcamStream) el.srcObject = webcamStream;
+                      if (el && webcamStream && el.srcObject !== webcamStream) el.srcObject = webcamStream;
                     }}
                     autoPlay
                     muted
@@ -984,7 +1048,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
                         inputMode === 'voice' 
                           ? 'border-brandBlue bg-brandBlue/10 text-brandBlue' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
                       }`}
                     >
                       Oral / Voice
@@ -1003,7 +1067,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                       className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase transition-all ${
                         inputMode === 'typing' 
                           ? 'border-brandPurple bg-brandPurple/10 text-brandPurple' 
-                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                          : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'
                       }`}
                     >
                       Keyboard / Typing
@@ -1059,7 +1123,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
                     type="button"
                     onClick={handleSkipQuestion}
                     disabled={isThinking || submittingAnswer}
-                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-100 bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     Ask different question

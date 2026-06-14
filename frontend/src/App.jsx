@@ -114,7 +114,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg border border-darkBorder hover:border-gray-500 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all flex items-center justify-center"
+            className="p-2 rounded-lg border border-darkBorder hover:border-gray-500 text-gray-400 hover:text-gray-100 transition-all flex items-center justify-center"
             title="Toggle Light/Dark Theme"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-brandBlue" />}
@@ -124,7 +124,7 @@ export default function App() {
             <>
               <button 
                 onClick={() => setView('dashboard')}
-                className={`hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1.5 ${view === 'dashboard' ? 'text-brandBlue font-brand' : ''}`}
+                className={`hover:text-gray-100 transition-colors flex items-center gap-1.5 ${view === 'dashboard' ? 'text-brandBlue font-brand' : ''}`}
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Dashboard</span>
@@ -132,7 +132,7 @@ export default function App() {
               
               <button 
                 onClick={() => setView('sandbox')}
-                className={`hover:text-gray-900 dark:hover:text-white transition-colors flex items-center gap-1.5 ${view === 'sandbox' ? 'text-brandBlue font-brand' : ''}`}
+                className={`hover:text-gray-100 transition-colors flex items-center gap-1.5 ${view === 'sandbox' ? 'text-brandBlue font-brand' : ''}`}
               >
                 <Code className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">DSA Prep</span>

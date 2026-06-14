@@ -369,7 +369,7 @@ export default function CodingSandbox({
 
           <button
             onClick={handleReset}
-            className="flex items-center gap-1 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="flex items-center gap-1 text-gray-400 hover:text-gray-100 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Reset
@@ -401,7 +401,7 @@ export default function CodingSandbox({
           <button
             onClick={handleRun}
             disabled={running || submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-300 hover:text-gray-900 dark:hover:text-white bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-gray-300 hover:text-gray-100 bg-darkBg border border-darkBorder hover:border-gray-500 rounded-lg transition-all disabled:opacity-50"
           >
             <Play className="w-3.5 h-3.5" />
             Run Code
@@ -455,21 +455,21 @@ function renderMarkdown(text) {
             // Headers
             if (trimmed.startsWith('### ')) {
               return (
-                <h3 key={lIdx} className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-4 mb-2 uppercase tracking-wide">
+                <h3 key={lIdx} className="text-sm font-bold text-gray-100 mt-4 mb-2 uppercase tracking-wide">
                   {parseInline(trimmed.substring(4))}
                 </h3>
               );
             }
             if (trimmed.startsWith('## ')) {
               return (
-                <h2 key={lIdx} className="text-base font-bold text-gray-900 dark:text-gray-100 mt-5 mb-2">
+                <h2 key={lIdx} className="text-base font-bold text-gray-100 mt-5 mb-2">
                   {parseInline(trimmed.substring(3))}
                 </h2>
               );
             }
             if (trimmed.startsWith('# ')) {
               return (
-                <h1 key={lIdx} className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">
+                <h1 key={lIdx} className="text-lg font-bold text-gray-100 mt-6 mb-3">
                   {parseInline(trimmed.substring(2))}
                 </h1>
               );
@@ -502,7 +502,7 @@ function parseInline(text) {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-extrabold text-gray-900 dark:text-white">{part.slice(2, -2)}</strong>;
+      return <strong key={index} className="font-extrabold text-gray-100">{part.slice(2, -2)}</strong>;
     }
     // Split by inline code (`code`)
     const codeParts = part.split(/(`.*?`)/g);

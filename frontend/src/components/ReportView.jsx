@@ -122,7 +122,7 @@ export default function ReportView({ interviewId, onNavigate }) {
         <div className="flex gap-3">
           <button 
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-darkSurface border border-darkBorder hover:border-gray-500 text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all text-xs font-semibold"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-darkSurface border border-darkBorder hover:border-gray-500 text-gray-300 hover:text-gray-100 transition-all text-xs font-semibold"
           >
             <Download className="w-4 h-4" /> Export PDF
           </button>

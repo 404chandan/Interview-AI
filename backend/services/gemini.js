@@ -94,58 +94,46 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
   const achievements = resumeData?.achievements || [];
   
   // Return realistic, highly versatile mock questions based on the round and history
-  if (round === 'resume') {
-    const dynamicQuestions = [];
-    
-    // Build questions from experiences
-    if (experience && experience.length > 0) {
-      experience.forEach(exp => {
-        dynamicQuestions.push(`Regarding your role as ${exp.role} at ${exp.company}: you wrote that you "${exp.description}". Can you describe the most challenging technical hurdle you faced in this role?`);
-        dynamicQuestions.push(`At ${exp.company}, you worked as a ${exp.role} for ${exp.duration}. Can you detail the tech stack used and how cache invalidation or database schemas were structured?`);
-      });
-    }
-    
-    // Build questions from projects
-    if (projects && projects.length > 0) {
-      projects.forEach(proj => {
-        dynamicQuestions.push(`Let's discuss your project "${proj.name}". You described it as: "${proj.description}". What were the architectural design tradeoffs you made, and how did you choose ${proj.technologies ? proj.technologies.join(', ') : 'the technologies'}?`);
-      });
-    }
-
-    // Build questions from achievements
-    if (achievements && achievements.length > 0) {
-      achievements.forEach(ach => {
-        dynamicQuestions.push(`In your achievements, you mentioned: "${ach}". Can you share more context on this and explain your individual contribution to this milestone?`);
-      });
-    }
-
-    // Build questions from skills
-    if (skills && skills.length > 0) {
-      const randomSkill = skills[Math.floor(Math.random() * skills.length)];
-      dynamicQuestions.push(`You listed "${randomSkill}" as one of your core skills. Can you explain a complex project where you used "${randomSkill}" and how it helped solve the business problem?`);
-    }
-    
-    // Fallback default questions if arrays are empty
-    if (dynamicQuestions.length === 0) {
-      dynamicQuestions.push(`Could you walk me through your background, highlighting your most significant technical accomplishments?`);
-      dynamicQuestions.push(`Which of the projects on your resume are you most proud of, and what engineering tradeoffs did you make?`);
-      dynamicQuestions.push(`You listed core skills like ${skills.slice(0, 3).join(', ')}. How do you apply these in your day-to-day software development?`);
-    }
+  if (round === 'resume' || round === 'rapid') {
+    const rapidQuestions = [
+      "Explain the difference between client-side rendering (CSR) and server-side rendering (SSR), and when you would use each.",
+      "What are React Server Components and how do they differ from standard client-side components?",
+      "Explain the event loop in JavaScript and how asynchronous operations are handled.",
+      "What is the difference between relative, absolute, fixed, and sticky positioning in CSS?",
+      "What is the difference between supervised and unsupervised learning? Give an example of each.",
+      "Explain the concept of overfitting in machine learning and how you can prevent it.",
+      "What is the role of an activation function in a neural network?",
+      "What is gradient descent and how does it help in training machine learning models?",
+      "Explain the four main pillars of Object-Oriented Programming (OOP) with real-world analogies.",
+      "What is the difference between an interface and an abstract class, and when would you use one over the other?",
+      "Explain polymorphism and give a simple explanation of compile-time vs run-time polymorphism.",
+      "What is encapsulation and how does it improve code maintainability and security?",
+      "What is the difference between a process and a thread, and how do they share memory?",
+      "Explain virtual memory and page faults. How does the operating system handle a page fault?",
+      "What is a deadlock, and what are the four necessary conditions for a deadlock to occur?",
+      "What is CPU scheduling, and how does the Round Robin algorithm work?"
+    ];
     
     // Select question based on history length, filtering out any questions that are already in history
-    let selectedQuestionText = dynamicQuestions[history.length % dynamicQuestions.length];
+    let selectedQuestionText = rapidQuestions[history.length % rapidQuestions.length];
     
-    // Avoid duplicates if possible
     const askedQuestions = history.map(h => h.questionText);
-    const uniqueUnasked = dynamicQuestions.filter(q => !askedQuestions.includes(q));
+    const uniqueUnasked = rapidQuestions.filter(q => !askedQuestions.includes(q));
     if (uniqueUnasked.length > 0) {
       selectedQuestionText = uniqueUnasked[0];
     }
     
+    let topic = 'General';
+    const index = history.length % 4;
+    if (index === 0) topic = 'Web Development';
+    else if (index === 1) topic = 'Machine Learning';
+    else if (index === 2) topic = 'OOPs';
+    else topic = 'Operating Systems';
+
     return {
       questionText: selectedQuestionText,
-      difficulty: 'medium',
-      topics: ['Resume', 'Technical']
+      difficulty: 'easy',
+      topics: [topic, 'Rapid Fire']
     };
   } else if (round === 'dsa') {
     const dsaQuestions = [
@@ -293,7 +281,7 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
     
     Instructions:
     - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
-    - If round is "resume", generate a deep-dive question targeting one of their listed projects, work experience achievements, or technologies. Refer directly to the name of the company or project. Make it specific and avoid generic questions.
+    - If round is "resume" or "rapid", generate a basic rapid interview question from one of these fields: Web Development, Machine Learning (ML), Object-Oriented Programming (OOPs), or Operating Systems (OS). Keep it general, conceptual, and quick to answer. Do NOT reference their resume projects or experience since this is a rapid fire round on core CS topics.
     - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!).
       Provide a clean function boilerplate for JavaScript in "codeTemplate".
       Provide a unique slug/name (e.g. "reverse-string") in "id".
