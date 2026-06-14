@@ -63,6 +63,7 @@ const InterviewSchema = new mongoose.Schema({
   currentRound: { type: Number, default: 1 }, // 1: Resume, 2: DSA, 3: System Design, 4: Behavioral
   resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume' },
   targetCompany: { type: String, default: 'Google' },
+  roundTimes: { type: mongoose.Schema.Types.Mixed, default: { 1: 30, 2: 45, 3: 15, 4: 10 } },
   
   // Section Scores (0-100)
   scores: {

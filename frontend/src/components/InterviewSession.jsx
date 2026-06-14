@@ -10,6 +10,8 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   const [currentRound, setCurrentRound] = useState(1); // 1: Resume, 2: DSA, 3: System Design, 4: Behavioral
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [questionText, setQuestionText] = useState('Hello! Let\'s begin by reviewing your resume.');
+  const [isPaused, setIsPaused] = useState(false);
+  const [stateRestored, setStateRestored] = useState(false);
   
   const [isTalking, setIsTalking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -57,17 +59,19 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
 
   // Timer Effect
   useEffect(() => {
+    if (stateRestored) return;
+
     const roundTimes = {
-      1: 1800, // 30 mins
-      2: 2700, // 45 mins
-      3: 900,  // 15 mins
-      4: 600   // 10 mins
+      1: interviewData?.roundTimes?.[1] ? interviewData.roundTimes[1] * 60 : 1800, // custom minutes to seconds
+      2: interviewData?.roundTimes?.[2] ? interviewData.roundTimes[2] * 60 : 2700,
+      3: interviewData?.roundTimes?.[3] ? interviewData.roundTimes[3] * 60 : 900,
+      4: interviewData?.roundTimes?.[4] ? interviewData.roundTimes[4] * 60 : 600
     };
     setTimeLeft(roundTimes[currentRound] || 1800);
-  }, [currentRound]);
+  }, [currentRound, interviewData, stateRestored]);
 
   useEffect(() => {
-    if (finished) return;
+    if (finished || isPaused) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -81,7 +85,24 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentRound, finished]);
+  }, [currentRound, finished, isPaused]);
+
+  // Auto-Save Interview State Effect
+  useEffect(() => {
+    if (!interviewId || finished) return;
+    try {
+      const stateToSave = {
+        currentRound,
+        roundStep,
+        timeLeft,
+        roundEvaluations,
+        currentQuestion,
+        questionText,
+        finished
+      };
+      localStorage.setItem(`interview_session_save_${interviewId}`, JSON.stringify(stateToSave));
+    } catch (e) {}
+  }, [currentRound, roundStep, timeLeft, roundEvaluations, currentQuestion, questionText, finished, interviewId]);
 
   const handleTimerExpiry = () => {
     alert("Time has expired for this round! Automatically advancing.");
@@ -323,16 +344,36 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
   }, []);
 
   // 4. Trigger Speech Synthesis (TTS) with gender-appropriate voice
-  const speakText = (text) => {
-    if (!synthRef.current || !speechVolume) return;
+  // 4. Trigger Speech Synthesis (TTS) with gender-appropriate voice
+  const speakText = (text, onComplete) => {
+    // Stop microphone immediately when speaking starts to prevent transcription loopback
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      setMicOn(false);
+    }
+
+    if (!synthRef.current || !speechVolume) {
+      if (onComplete) onComplete();
+      return;
+    }
     
     // Stop any active speak
     synthRef.current.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onstart = () => setIsTalking(true);
-    utterance.onend = () => setIsTalking(false);
-    utterance.onerror = () => setIsTalking(false);
+    
+    utterance.onend = () => {
+      setIsTalking(false);
+      if (onComplete) onComplete();
+    };
+    
+    utterance.onerror = () => {
+      setIsTalking(false);
+      if (onComplete) onComplete();
+    };
 
     // Pick a female voice for Sarah avatar, male voice for David
     const avatarName = interviewData?.interviewerAvatar || 'Sarah';
@@ -402,17 +443,17 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       const data = await res.json();
       setCurrentQuestion(data.question);
       setQuestionText(data.question.questionText);
-      speakText(data.question.questionText);
-
-      // Automatically reactivate microphone for verbal rounds if in Voice Mode
-      if ((round === 1 || round === 4) && inputMode === 'voice' && !micOn && recognitionRef.current) {
-        setTimeout(() => {
+      
+      speakText(data.question.questionText, () => {
+        // Automatically reactivate microphone for verbal rounds if in Voice Mode after speaking finishes
+        if ((round === 1 || round === 4) && inputMode === 'voice' && recognitionRef.current) {
           try {
+            setTranscript('');
             recognitionRef.current.start();
             setMicOn(true);
           } catch (e) {}
-        }, 1500);
-      }
+        }
+      });
     } catch (err) {
       console.warn("Offline fallback for question retrieval.");
       
@@ -452,27 +493,54 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
       
       setCurrentQuestion(mockQuestion);
       setQuestionText(mockQuestion.questionText);
-      speakText(mockQuestion.questionText);
+      
+      speakText(mockQuestion.questionText, () => {
+        if ((round === 1 || round === 4) && inputMode === 'voice' && recognitionRef.current) {
+          try {
+            setTranscript('');
+            recognitionRef.current.start();
+            setMicOn(true);
+          } catch (e) {}
+        }
+      });
     } finally {
       setIsThinking(false);
     }
   };
 
-  // Fetch initial question on mount
+  // Restore saved state or trigger initial greeting on mount
   useEffect(() => {
-    setTimeout(() => {
-      speakText("Hello! Let's begin by reviewing your resume. I analyzed your profile at Siemens.");
-      getQuestion(1);
-      
-      // Auto start mic for first question
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-          setMicOn(true);
-        } catch (e) {}
+    let restored = false;
+    try {
+      const saved = localStorage.getItem(`interview_session_save_${interviewId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.currentRound) setCurrentRound(parsed.currentRound);
+        if (parsed.roundStep !== undefined) setRoundStep(parsed.roundStep);
+        if (parsed.timeLeft !== undefined) setTimeLeft(parsed.timeLeft);
+        if (parsed.roundEvaluations) setRoundEvaluations(parsed.roundEvaluations);
+        if (parsed.currentQuestion) setCurrentQuestion(parsed.currentQuestion);
+        if (parsed.questionText) {
+          setQuestionText(parsed.questionText);
+          setDisplayedQuestion(parsed.questionText);
+        }
+        if (parsed.finished !== undefined) setFinished(parsed.finished);
+        restored = true;
+        setStateRestored(true);
+        console.log("Successfully restored interview state from local storage.");
       }
-    }, 1000);
-  }, []);
+    } catch (e) {
+      console.warn("Could not restore saved interview session state:", e);
+    }
+
+    if (!restored) {
+      setTimeout(() => {
+        speakText("Hello! Let's begin by reviewing your resume. I analyzed your profile.", () => {
+          getQuestion(1);
+        });
+      }, 1000);
+    }
+  }, [interviewId]);
 
   // 7. Submit Verbal Answer (Round 1 & Round 4)
   const handleSubmitAnswer = async () => {
@@ -726,6 +794,11 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
     setFinished(true);
     setIsThinking(true);
     
+    // Clear saved session state from local storage on completion
+    try {
+      localStorage.removeItem(`interview_session_save_${interviewId}`);
+    } catch (e) {}
+
     if (recognitionRef.current) {
       micOnRef.current = false;
       try {
@@ -800,6 +873,25 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Pause Button */}
+          {!finished && !showProceedButton && (
+            <button
+              onClick={() => {
+                setIsPaused(true);
+                if (recognitionRef.current) {
+                  try {
+                    recognitionRef.current.stop();
+                  } catch (e) {}
+                  setMicOn(false);
+                }
+              }}
+              className="px-3 py-1.5 rounded-lg border border-darkBorder bg-darkBg text-gray-300 hover:text-gray-100 hover:border-gray-500 transition-all font-semibold flex items-center gap-1 hover:bg-darkBg/80"
+            >
+              <span className="w-1.5 h-3 border-r-2 border-l-2 border-current inline-block mr-1" />
+              Pause
+            </button>
+          )}
+
           {/* Countdown Timer */}
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-300 font-mono font-bold ${
             timeLeft < 60 
@@ -825,7 +917,7 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
             >
               {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </button>
-
+ 
             <button 
               onClick={() => setSpeechVolume(!speechVolume)} 
               className={`p-2 rounded-lg border transition-all ${speechVolume ? 'border-brandPurple bg-brandPurple/15 text-brandPurple' : 'border-darkBorder bg-darkBg text-gray-500 hover:text-gray-100'}`}
@@ -1188,6 +1280,39 @@ export default function InterviewSession({ interviewData, resumeData, onIntervie
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-brandPurple border-t-transparent" />
           <h2 className="text-xl font-bold text-white">Interview Concluded successfully</h2>
           <p className="text-gray-400 text-sm">Our AI Engine is scoring your performance and writing your feedback dossier...</p>
+        </div>
+      )}
+
+      {/* Paused Overlay Screen */}
+      {isPaused && (
+        <div className="fixed inset-0 bg-black/85 flex flex-col items-center justify-center z-50 text-center p-4 backdrop-blur">
+          <div className="bg-darkSurface border border-darkBorder rounded-2xl p-8 max-w-md w-full space-y-6 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-brandBlue/10 border border-brandBlue/30 flex items-center justify-center text-brandBlue mx-auto">
+              <span className="w-2.5 h-6 border-r-4 border-l-4 border-current inline-block" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-white">Interview Paused</h2>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Your progress, current round, timer, and evaluations have been safely saved. You can resume this session at any time.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setIsPaused(false);
+                if (inputMode === 'voice' && (currentRound === 1 || currentRound === 4) && recognitionRef.current) {
+                  try {
+                    recognitionRef.current.start();
+                    setMicOn(true);
+                  } catch (e) {}
+                }
+              }}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-brandBlue to-brandPurple text-white font-bold hover:opacity-95 transition-all shadow-lg shadow-brandBlue/15"
+            >
+              Resume Interview
+            </button>
+          </div>
         </div>
       )}
     </div>

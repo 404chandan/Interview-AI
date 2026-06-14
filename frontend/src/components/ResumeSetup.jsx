@@ -11,6 +11,19 @@ export default function ResumeSetup({ onStartInterview }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedInterviewer, setSelectedInterviewer] = useState('Sarah');
+  const [roundTimes, setRoundTimes] = useState({
+    1: 30, // 30 mins
+    2: 45, // 45 mins
+    3: 15, // 15 mins
+    4: 10  // 10 mins
+  });
+
+  const handleRoundTimeChange = (roundNum, value) => {
+    setRoundTimes(prev => ({
+      ...prev,
+      [roundNum]: Math.max(1, value)
+    }));
+  };
 
   const roles = [
     'Software Engineer',
@@ -95,7 +108,8 @@ export default function ResumeSetup({ onStartInterview }) {
           experienceYears: experience,
           resumeId,
           interviewer: selectedInterviewer,
-          targetCompany, // Pass targetCompany
+          targetCompany,
+          roundTimes,
         }),
       });
 
@@ -107,7 +121,7 @@ export default function ResumeSetup({ onStartInterview }) {
       
       // Pass data back to parent
       onStartInterview({
-        interview: { ...startData.interview, interviewerAvatar: selectedInterviewer },
+        interview: { ...startData.interview, interviewerAvatar: selectedInterviewer, roundTimes },
         resume: uploadData.resume
       });
     } catch (err) {
@@ -138,7 +152,8 @@ export default function ResumeSetup({ onStartInterview }) {
             speechClarityScore: 92,
             speakingPace: 'Normal'
           },
-          createdAt: new Date()
+          createdAt: new Date(),
+          roundTimes
         },
         resume: {
           _id: mockResumeId,
@@ -310,6 +325,57 @@ export default function ResumeSetup({ onStartInterview }) {
               <span>5 (Mid/Senior)</span>
               <span>10 (Lead)</span>
               <span>15+ (Principal)</span>
+            </div>
+          </div>
+
+          {/* Custom Round Timings */}
+          <div className="space-y-4 border-t border-darkBorder/40 pt-6">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block">Customize Round Durations (Minutes)</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">R1: Rapid Fire</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={roundTimes[1]}
+                  onChange={(e) => handleRoundTimeChange(1, Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">R2: DSA Coding</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={roundTimes[2]}
+                  onChange={(e) => handleRoundTimeChange(2, Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">R3: System Design</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={roundTimes[3]}
+                  onChange={(e) => handleRoundTimeChange(3, Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">R4: Behavioral</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={roundTimes[4]}
+                  onChange={(e) => handleRoundTimeChange(4, Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-darkBg border border-darkBorder rounded-lg focus:outline-none focus:border-brandBlue text-gray-300 text-sm"
+                />
+              </div>
             </div>
           </div>
 

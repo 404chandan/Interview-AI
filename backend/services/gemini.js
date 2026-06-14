@@ -95,7 +95,67 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
   
   // Return realistic, highly versatile mock questions based on the round and history
   if (round === 'resume' || round === 'rapid') {
-    const rapidQuestions = [
+    const techQuestions = {
+      'javascript': [
+        "Explain the event loop in JavaScript and how asynchronous operations are handled.",
+        "What are React Server Components and how do they differ from standard client-side components?",
+        "Explain the difference between client-side rendering (CSR) and server-side rendering (SSR), and when you would use each."
+      ],
+      'node': [
+        "Explain the event loop in JavaScript and how asynchronous operations are handled.",
+        "How do asynchronous operations work in Node.js compared to multi-threaded backends?"
+      ],
+      'react': [
+        "What are React Server Components and how do they differ from standard client-side components?",
+        "Explain the difference between client-side rendering (CSR) and server-side rendering (SSR), and when you would use each."
+      ],
+      'css': [
+        "What is the difference between relative, absolute, fixed, and sticky positioning in CSS?"
+      ],
+      'python': [
+        "What is the difference between supervised and unsupervised learning? Give an example of each.",
+        "Explain the concept of overfitting in machine learning and how you can prevent it.",
+        "What is the role of an activation function in a neural network?"
+      ],
+      'ml': [
+        "What is the difference between supervised and unsupervised learning? Give an example of each.",
+        "Explain the concept of overfitting in machine learning and how you can prevent it.",
+        "What is the role of an activation function in a neural network.",
+        "What is gradient descent and how does it help in training machine learning models?"
+      ],
+      'oops': [
+        "Explain the four main pillars of Object-Oriented Programming (OOP) with real-world analogies.",
+        "What is the difference between an interface and an abstract class, and when would you use one over the other?",
+        "Explain polymorphism and give a simple explanation of compile-time vs run-time polymorphism.",
+        "What is encapsulation and how does it improve code maintainability and security?"
+      ],
+      'redis': [
+        "Explain Redis persistence models. What is the difference between RDB snapshotting and AOF logging?",
+        "How does Redis handle cache eviction when memory limits are reached?"
+      ],
+      'docker': [
+        "What is the difference between a Docker image and a container?",
+        "Explain container orchestration. What benefits does Kubernetes provide over docker-compose?"
+      ],
+      'kubernetes': [
+        "Explain container orchestration. What benefits does Kubernetes provide over docker-compose?",
+        "What is a Kubernetes Pod, and how does it relate to containers?"
+      ],
+      'aws': [
+        "What is the difference between horizontal and vertical scaling on AWS? E.g. EC2 instance scaling vs scaling out.",
+        "Explain IAM roles and how they secure AWS service-to-service communication."
+      ],
+      'sql': [
+        "What is database indexing, and how does it improve query performance? What are the write performance tradeoffs?",
+        "Explain database normalization and the difference between 2NF and 3NF."
+      ],
+      'mongodb': [
+        "What are the main differences between NoSQL databases like MongoDB and relational databases like PostgreSQL?",
+        "Explain sharding in MongoDB and how it handles horizontal database scaling."
+      ]
+    };
+
+    const generalQuestions = [
       "Explain the difference between client-side rendering (CSR) and server-side rendering (SSR), and when you would use each.",
       "What are React Server Components and how do they differ from standard client-side components?",
       "Explain the event loop in JavaScript and how asynchronous operations are handled.",
@@ -113,27 +173,33 @@ export const generateMockQuestion = (round, resumeData, history = [], targetComp
       "What is a deadlock, and what are the four necessary conditions for a deadlock to occur?",
       "What is CPU scheduling, and how does the Round Robin algorithm work?"
     ];
+
+    let candidateQuestions = [];
+    const skillList = (resumeData?.skills || []).map(s => s.toLowerCase());
     
-    // Select question based on history length, filtering out any questions that are already in history
-    let selectedQuestionText = rapidQuestions[history.length % rapidQuestions.length];
-    
-    const askedQuestions = history.map(h => h.questionText);
-    const uniqueUnasked = rapidQuestions.filter(q => !askedQuestions.includes(q));
-    if (uniqueUnasked.length > 0) {
-      selectedQuestionText = uniqueUnasked[0];
+    skillList.forEach(s => {
+      for (const [key, qns] of Object.entries(techQuestions)) {
+        if (s.includes(key) || key.includes(s)) {
+          candidateQuestions.push(...qns);
+        }
+      }
+    });
+
+    candidateQuestions = Array.from(new Set(candidateQuestions));
+    if (candidateQuestions.length === 0) {
+      candidateQuestions = generalQuestions;
     }
-    
-    let topic = 'General';
-    const index = history.length % 4;
-    if (index === 0) topic = 'Web Development';
-    else if (index === 1) topic = 'Machine Learning';
-    else if (index === 2) topic = 'OOPs';
-    else topic = 'Operating Systems';
+
+    const askedQuestions = history.map(h => h.questionText);
+    const uniqueUnasked = candidateQuestions.filter(q => !askedQuestions.includes(q));
+    let selectedQuestionText = uniqueUnasked.length > 0 
+      ? uniqueUnasked[Math.floor(Math.random() * uniqueUnasked.length)] 
+      : candidateQuestions[Math.floor(Math.random() * candidateQuestions.length)];
 
     return {
       questionText: selectedQuestionText,
       difficulty: 'easy',
-      topics: [topic, 'Rapid Fire']
+      topics: ['Resume-matched Skill', 'Rapid Fire']
     };
   } else if (round === 'dsa') {
     const dsaQuestions = [
@@ -312,7 +378,7 @@ export const generateQuestion = async (round, resumeData, history = [], targetCo
     
     Instructions:
     - CRITICAL CONVERSATIONAL STYLE: The generated question MUST be a single, concise, human-friendly, and conversational question. Do NOT ask multiple sub-questions, bullet points, or multi-part/numbered lists of questions in a single turn. Seek exactly ONE explanation, design choice, or response at a time, keeping it like a real-time back-and-forth interview.
-    - If round is "resume" or "rapid", generate a basic rapid interview question from one of these fields: Web Development, Machine Learning (ML), Object-Oriented Programming (OOPs), or Operating Systems (OS). Keep it general, conceptual, and quick to answer. Do NOT reference their resume projects or experience since this is a rapid fire round on core CS topics.
+    - If round is "resume" or "rapid", generate a basic rapid conceptual interview question related ONLY to the skills, technologies, and projects mentioned in the candidate's resume (Resume Skills: ${skills.join(', ')}, Technologies: ${technologies.join(', ')}). Seek exactly ONE explanation, conceptual definition, or response at a time, keeping it general, conceptual, quick to answer, but directly related to their resume skills. Do NOT ask questions about general topics that aren't represented on their resume.
     - If round is "dsa", generate a LeetCode style coding question specifically for the topic: "${randomDsaTopic}" (do NOT limit yourself to substring problems!). ${patternInstruction}
       Provide a clean function boilerplate for JavaScript in "codeTemplate".
       Provide a unique slug/name (e.g. "reverse-string") in "id".

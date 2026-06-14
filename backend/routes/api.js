@@ -250,7 +250,7 @@ router.post('/resume/upload', upload.single('resume'), async (req, res) => {
  */
 router.post('/interview/start', async (req, res) => {
   try {
-    const { role, experienceYears, resumeId, targetCompany } = req.body;
+    const { role, experienceYears, resumeId, targetCompany, roundTimes } = req.body;
     const userId = await getUserId(req);
 
     let interview;
@@ -262,7 +262,8 @@ router.post('/interview/start', async (req, res) => {
         resumeId: mongoose.Types.ObjectId.isValid(resumeId) ? resumeId : null,
         status: 'ongoing',
         currentRound: 1,
-        targetCompany: targetCompany || 'Google'
+        targetCompany: targetCompany || 'Google',
+        roundTimes: roundTimes || { 1: 30, 2: 45, 3: 15, 4: 10 }
       });
     } else {
       interview = {
@@ -274,6 +275,7 @@ router.post('/interview/start', async (req, res) => {
         status: 'ongoing',
         currentRound: 1,
         targetCompany: targetCompany || 'Google',
+        roundTimes: roundTimes || { 1: 30, 2: 45, 3: 15, 4: 10 },
         scores: { resume: 0, projects: 0, technical: 0, dsa: 0, systemDesign: 0, behavioral: 0 },
         finalScore: 0,
         hiringDecision: 'Pending',
